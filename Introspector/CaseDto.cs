@@ -1,3 +1,3 @@
 namespace Introspector;
 
-internal record CaseDto(string Name, string Note);
+internal record CaseDto(string Name, string Text);

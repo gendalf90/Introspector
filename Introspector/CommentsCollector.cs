@@ -13,10 +13,9 @@ internal static class CommentsCollector
 
         return AppDomain.CurrentDomain.GetAssemblies()
             .SelectMany(assembly => assembly.GetTypes())
-            .Where(type => type.FullName.EndsWith("GeneratedCommentSource"))
-            .Select(type => type.GetMethod("GetList").Invoke(null, Array.Empty<object>()))
-            .Cast<IEnumerable<string>>()
-            .SelectMany(comment => comment);
+            .Select(GetCommentsOrNull)
+            .Where(comments => comments != null)
+            .SelectMany(comments => comments);
     }
     
     private static void LoadReferencedAssembly(Assembly assembly)
@@ -28,5 +27,25 @@ internal static class CommentsCollector
                 LoadReferencedAssembly(Assembly.Load(name));
             }
         }
+    }
+
+    private static IEnumerable<string> GetCommentsOrNull(Type type)
+    {
+        if (!type.FullName.EndsWith("CommentSource"))
+        {
+            return null;
+        }
+
+        if (type.GetMethod("GetList") is not MethodInfo method)
+        {
+            return null;
+        }
+
+        if (!method.IsStatic || method.GetParameters().Any() || method.ReturnParameter.ParameterType != typeof(IEnumerable<string>))
+        {
+            return null;
+        }
+
+        return method.Invoke(null, Array.Empty<string>()) as IEnumerable<string>;
     }
 }

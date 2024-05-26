@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Introspector", "Introspecto
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Introspector.Generator", "Introspector.Generator\Introspector.Generator.csproj", "{C489F442-8ABE-4FA7-AB4C-B11C8B845ECC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Introspector.Sample", "Introspector.Sample\Introspector.Sample.csproj", "{EFAAB184-E15F-42CF-A16B-1FA496C17D77}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{C489F442-8ABE-4FA7-AB4C-B11C8B845ECC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C489F442-8ABE-4FA7-AB4C-B11C8B845ECC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C489F442-8ABE-4FA7-AB4C-B11C8B845ECC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EFAAB184-E15F-42CF-A16B-1FA496C17D77}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EFAAB184-E15F-42CF-A16B-1FA496C17D77}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EFAAB184-E15F-42CF-A16B-1FA496C17D77}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EFAAB184-E15F-42CF-A16B-1FA496C17D77}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
