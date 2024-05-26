@@ -58,15 +58,15 @@ public static class IApplicationBuilderExtensions
 
                 if (!string.IsNullOrEmpty(caseName) && !FindCase(comments, caseName))
                 {
+                    context.Response.StatusCode = 404;
+                }
+                else
+                {
                     await componentsPresenter.Write(context, new ComponentsDto
                     {
                         Scale = scale,
                         Case = caseName
                     });
-                }
-                else
-                {
-                    context.Response.StatusCode = 404;
                 }
             });
         });
