@@ -6,6 +6,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <Version>1.0.0-alpha.5</Version>
+    <Authors>gendalf90</Authors>
   </PropertyGroup>
 
   <ItemGroup>

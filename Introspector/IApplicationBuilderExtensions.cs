@@ -56,11 +56,18 @@ public static class IApplicationBuilderExtensions
                 var caseName = GetStringQueryParam(context, "case");
                 var scale = GetFloatQueryParam(context, "scale");
 
-                await componentsPresenter.Write(context, new ComponentsDto
+                if (!string.IsNullOrEmpty(caseName) && !FindCase(comments, caseName))
                 {
-                    Scale = scale,
-                    Case = caseName
-                });
+                    await componentsPresenter.Write(context, new ComponentsDto
+                    {
+                        Scale = scale,
+                        Case = caseName
+                    });
+                }
+                else
+                {
+                    context.Response.StatusCode = 404;
+                }
             });
         });
 
