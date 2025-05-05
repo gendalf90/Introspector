@@ -1,6 +1,6 @@
+using System.Diagnostics;
 using System.Text;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using System.Xml;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 
@@ -14,16 +14,15 @@ public static class IApplicationBuilderExtensions
 
         options?.Invoke(opt);
 
-        var comments = GetComments().ToList();
-        var casesListPresenter = CasesListPresenter.Create(comments);
-        var componentsPresenter = new ComponentsPresenter(comments);
-        var sequencePresenter = new SequencePresenter(comments);
+        var elements = LoadElements(opt);
 
         appBuilder.Map($"{opt.BasePath}/cases", builder =>
         {
             builder.Run(async context =>
             {
-                await casesListPresenter.Write(context);
+                var casesPresenter = CasesPresenter.Create(elements);
+
+                await casesPresenter.Write(context);
             });
         });
 
@@ -33,19 +32,9 @@ public static class IApplicationBuilderExtensions
             {
                 var caseName = GetStringQueryParam(context, "case");
                 var scale = GetFloatQueryParam(context, "scale");
+                var presenter = SequencePresenter.Create(caseName, scale, elements);
 
-                if (FindCase(comments, caseName))
-                {
-                    await sequencePresenter.Write(context, new SequenceDto
-                    {
-                        Case = caseName,
-                        Scale = scale
-                    });
-                }
-                else
-                {
-                    context.Response.StatusCode = 404;
-                }
+                await presenter.Write(context);
             });
         });
 
@@ -55,33 +44,64 @@ public static class IApplicationBuilderExtensions
             {
                 var caseName = GetStringQueryParam(context, "case");
                 var scale = GetFloatQueryParam(context, "scale");
+                var presenter = ComponentsPresenter.Create(caseName, scale, elements);
 
-                if (!string.IsNullOrEmpty(caseName) && !FindCase(comments, caseName))
-                {
-                    context.Response.StatusCode = 404;
-                }
-                else
-                {
-                    await componentsPresenter.Write(context, new ComponentsDto
-                    {
-                        Scale = scale,
-                        Case = caseName
-                    });
-                }
+                await presenter.Write(context);
             });
         });
 
         return appBuilder;
     }
 
-    private static IEnumerable<Comment> GetComments()
+    private static IEnumerable<Element> LoadElements(IntrospectorOptions options)
     {
-        foreach (var value in CommentsCollector.Collect())
+        if (options?.XmlFilePaths == null)
         {
-            if (CommentFactory.TryCreate(value, out var result))
+            return Enumerable.Empty<Element>();
+        }
+
+        var results = new List<Element>();
+
+        foreach (var path in options.XmlFilePaths)
+        {
+            if (TryLoadXmlDocument(path, out var document))
             {
-                yield return result;
+                Case.Parse(document, results);
+                Component.Parse(document, results);
+                Call.Parse(document, results);
+                Comment.Parse(document, results);
             }
+        }
+
+        Call.AddReferencedDependencies(results);
+        Comment.AddReferencedDependencies(results);
+        Call.CreateNotListedDependecies(results);
+        Comment.CreateNotListedDependecies(results);
+        Call.DeduplicateAndCleanDependecies(results);
+        Comment.DeduplicateAndCleanDependecies(results);
+        Case.Deduplicate(results);
+        Component.Deduplicate(results);
+
+        return results;
+    }
+
+    private static bool TryLoadXmlDocument(string path, out XmlDocument result)
+    {
+        result = null;
+
+        try
+        {
+            result = new XmlDocument();
+
+            result.Load(path);
+
+            return true;
+        }
+        catch (Exception e)
+        {
+            Debug.WriteLine(e);
+            
+            return false;
         }
     }
 
@@ -107,268 +127,344 @@ public static class IApplicationBuilderExtensions
         return context.Request.Query[name].FirstOrDefault();
     }
 
-    private static bool FindCase(List<Comment> comments, string name)
+    private class CasesPresenter : Visitor
     {
-        if (string.IsNullOrEmpty(name))
-        {
-            return false;
-        }
-        
-        var visitor = new FindCaseVisitor(name);
+        private readonly List<Case> cases = new();
 
-        comments.ForEach(c => c.Accept(visitor));
+        private CasesPresenter() { }
 
-        return visitor.Success;
-    }
-
-    private static bool EqualsAny(string value, params string[] values)
-    {
-        return values.Any(v => string.Equals(v, value, StringComparison.OrdinalIgnoreCase));
-    }
-
-    private class CasesListPresenter : CommentVisitor
-    {
-        private readonly List<CaseDto> cases = new();
-
-        private CasesListPresenter()
-        {
-        }
-        
         public override void Visit(Case value)
         {
-            value.FillCases(cases);
-        }
-
-        public override void Visit(Message value)
-        {
-            value.FillCases(cases);
+            cases.Add(value);
         }
 
         public async Task Write(HttpContext context)
         {
-            await context.Response.WriteAsJsonAsync(cases, new JsonSerializerOptions
-            {
-                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
-            });
+            context.Response.ContentType = "application/json; charset=utf-8";
+
+            var builder = new StringBuilder();
+
+            builder.Append('[');
+
+            WriteCases(builder);
+
+            builder.AppendLine();
+            builder.Append(']');
+
+            await context.Response.WriteAsync(builder.ToString());
         }
 
-        public static CasesListPresenter Create(List<Comment> comments)
+        private void WriteCases(StringBuilder builder)
         {
-            var result = new CasesListPresenter();
-
-            foreach (var comment in comments)
+            foreach (var first in cases.Take(1))
             {
-                comment.Accept(result);
+                builder.AppendLine();
+                first.WriteJson(builder);
+            }
+
+            foreach (var other in cases.Skip(1))
+            {
+                builder.Append(',');
+                builder.AppendLine();
+                other.WriteJson(builder);
+            }
+        }
+
+        public static CasesPresenter Create(IEnumerable<Element> elements)
+        {
+            var result = new CasesPresenter();
+
+            foreach (var element in elements)
+            {
+                element.Accept(result);
             }
 
             return result;
         }
     }
 
-    private class SequenceCollector : CommentVisitor
+    private class SequencePresenter : IVisitor
     {
-        private readonly SequenceDto sequence;
+        private readonly string caseName;
+        private readonly float? scale;
 
-        public SequenceCollector(SequenceDto sequence)
+        private Case currentCase;
+        private readonly List<Component> components = new();
+        private readonly List<Call> calls = new();
+        private readonly List<Comment> comments = new();
+
+        private SequencePresenter(string caseName, float? scale)
         {
-            this.sequence = sequence;
+            this.caseName = caseName;
+            this.scale = scale;
         }
 
-        public override void Visit(Participant value)
+        public void Visit(Case value)
         {
-            value.FillSequence(sequence);
-        }
-
-        public override void Visit(Message value)
-        {
-            value.FillSequence(sequence);
-        }
-    }
-
-    private class FindCaseVisitor : CommentVisitor
-    {
-        private readonly string name;
-
-        public FindCaseVisitor(string name)
-        {
-            this.name = name;
-        }
-
-        public override void Visit(Case value)
-        {
-            if (value.HasName(name))
+            if (value.HasName(caseName))
             {
-                Success = true;
+                currentCase = value;
             }
         }
 
-        public bool Success { get; private set;}
-    }
-
-    private class SequencePresenter
-    {
-        private readonly List<Comment> comments;
-
-        public SequencePresenter(List<Comment> comments)
+        public void Visit(Component value)
         {
-            this.comments = comments;
+            if (!value.IsFiltered(scale))
+            {
+                components.Add(value);
+            }
         }
 
-        public async Task Write(HttpContext context, SequenceDto sequence)
+        public void Visit(Call value)
         {
-            var collector = new SequenceCollector(sequence);
+            if (value.HasCase(caseName))
+            {
+                calls.Add(value);
+            }
+        }
 
-            comments.ForEach(comment => comment.Accept(collector));
+        public void Visit(Comment value)
+        {
+            if (value.HasCase(caseName))
+            {
+                comments.Add(value);
+            }
+        }
 
-            Filter(sequence);
-            Scale(sequence);
-            Sort(sequence);
+        public async Task Write(HttpContext context)
+        {
+            if (currentCase == null)
+            {
+                context.Response.StatusCode = 404;
+
+                return;
+            }
+
+            FilterCallsByComponents();
+            FilterCommentsByComponents();
 
             context.Response.ContentType = "text/plain; charset=utf-8";
 
             var builder = new StringBuilder().AppendLine("@startuml");
 
-            foreach (var participant in sequence.Participants)
-            {
-                builder.AppendLine($@"{participant.Type ?? "participant"} ""{participant.Name}""");
-            }
+            currentCase.WriteSequenceTitle(builder);
 
-            foreach (var record in sequence.Records)
-            {
-                if (record.IsMessage)
-                {
-                    builder.AppendLine($@"""{record.From}"" -> ""{record.To}"" : {record.Text}");
-                }
-
-                if (record.IsNote)
-                {
-                    builder.AppendLine($@"note over ""{record.Over}"" : {record.Text}");
-                }
-            }
+            WriteComponents(builder);
+            WriteMessages(builder);
 
             await context.Response.WriteAsync(builder.AppendLine("@enduml").ToString());
         }
 
-        private void Filter(SequenceDto sequence)
+        private void FilterCallsByComponents()
         {
-            sequence.Participants.RemoveAll(p => !p.Used);
+            calls.RemoveAll(call => !components.Any(component => call.ContainsTo(component) || call.ContainsFrom(component)));
         }
 
-        private void Scale(SequenceDto sequence)
+        private void FilterCommentsByComponents()
         {
-            foreach (var participant in sequence.Participants.Where(p => p.Scale > sequence.Scale))
+            comments.RemoveAll(comment => !components.Any(component => comment.ContainsOver(component)));
+        }
+
+        private void WriteComponents(StringBuilder builder)
+        {
+            var written = new HashSet<Component>();
+            var orderedCalls = calls
+                .OrderBy(call => call.GetCaseOrder(caseName))
+                .ToList();
+
+            foreach (var call in orderedCalls)
             {
-                sequence.Records.RemoveAll(r => EqualsAny(participant.Name, r.From, r.To, r.Over));
+                var toWrite = components.Find(call.ContainsFrom);
+
+                if (toWrite != null && written.Add(toWrite))
+                {
+                    toWrite.WriteToSequence(builder);
+                }
             }
 
-            sequence.Participants.RemoveAll(p => p.Scale > sequence.Scale);
-        }
-
-        private void Sort(SequenceDto sequence)
-        {
-            var participantOrder = 0;
-
-            sequence.Records.Sort((r1, r2) => Comparer<float?>.Default.Compare(r1.Order, r2.Order));
-
-            sequence.Records.ForEach(r =>
+            foreach (var call in orderedCalls)
             {
-                SetParticipantOrder(sequence, r.From, ref participantOrder);
-                SetParticipantOrder(sequence, r.To, ref participantOrder);
-                SetParticipantOrder(sequence, r.Over, ref participantOrder);
-            });
+                var toWrite = components.Find(call.ContainsTo);
 
-            sequence.Participants.Sort((p1, p2) => Comparer<float?>.Default.Compare(p1.Order, p2.Order));
+                if (toWrite != null && written.Add(toWrite))
+                {
+                    toWrite.WriteToSequence(builder);
+                }
+            }
+
+            foreach (var comment in comments)
+            {
+                var toWrite = components.Find(comment.ContainsOver);
+
+                if (toWrite != null && written.Add(toWrite))
+                {
+                    toWrite.WriteToSequence(builder);
+                }
+            }
         }
 
-        private void SetParticipantOrder(SequenceDto sequence, string name, ref int currentOrder)
+        private void WriteMessages(StringBuilder builder)
         {
-            if (string.IsNullOrEmpty(name))
+            var messages = new List<(Func<string, float?> GetOrder, Action<StringBuilder> Write)>();
+
+            foreach (var call in calls)
+            {
+                messages.Add((call.GetCaseOrder, call.WriteToSequence));
+            }
+
+            foreach (var comment in comments)
+            {
+                messages.Add((comment.GetCaseOrder, comment.WriteToSequence));
+            }
+
+            foreach (var message in messages.OrderBy(message => message.GetOrder(caseName)))
+            {
+                message.Write(builder);
+            }
+        }
+
+        public static SequencePresenter Create(string caseName, float? scale, IEnumerable<Element> elements)
+        {
+            var result = new SequencePresenter(caseName, scale);
+
+            foreach (var element in elements)
+            {
+                element.Accept(result);
+            }
+
+            return result;
+        }
+    }
+
+    private class ComponentsPresenter : IVisitor
+    {
+        private readonly string caseName;
+        private readonly float? scale;
+
+        private readonly List<Case> cases = new();
+        private readonly List<Component> components = new();
+        private readonly List<Call> calls = new();
+        private readonly List<Comment> comments = new();
+
+        private ComponentsPresenter(string caseName, float? scale)
+        {
+            this.caseName = caseName;
+            this.scale = scale;
+        }
+
+        public void Visit(Case value)
+        {
+            if (!string.IsNullOrWhiteSpace(caseName) && !value.HasName(caseName))
             {
                 return;
             }
 
-            var participant = sequence.Participants.FirstOrDefault(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+            cases.Add(value);
+        }
 
-            if (participant == null)
+        public void Visit(Component value)
+        {
+            if (!value.IsFiltered(scale))
+            {
+                components.Add(value);
+            }
+        }
+
+        public void Visit(Call value)
+        {
+            if (!string.IsNullOrWhiteSpace(caseName) && !value.HasCase(caseName))
             {
                 return;
             }
 
-            if (!participant.Order.HasValue)
+            calls.Add(value);
+        }
+
+        public void Visit(Comment value)
+        {
+            if (!string.IsNullOrWhiteSpace(caseName) && !value.HasCase(caseName))
             {
-                participant.Order = currentOrder++;
+                return;
             }
-        }
-    }
 
-    private class ComponentsCollector : CommentVisitor
-    {
-        private readonly ComponentsDto components;
-
-        public ComponentsCollector(ComponentsDto components)
-        {
-            this.components = components;
+            comments.Add(value);
         }
 
-        public override void Visit(Participant value)
+        public async Task Write(HttpContext context)
         {
-            value.FillComponents(components);
-        }
+            if (cases.Count == 0)
+            {
+                context.Response.StatusCode = 404;
 
-        public override void Visit(Message value)
-        {
-            value.FillComponents(components);
-        }
-    }
-
-    private class ComponentsPresenter : CommentVisitor
-    {
-        private readonly List<Comment> comments;
-
-        public ComponentsPresenter(List<Comment> comments)
-        {
-            this.comments = comments;
-        }
-
-        public async Task Write(HttpContext context, ComponentsDto components)
-        {
-            var collector = new ComponentsCollector(components);
-
-            comments.ForEach(comment => comment.Accept(collector));
-
-            Filter(components);
-            Scale(components);
+                return;
+            }
 
             context.Response.ContentType = "text/plain; charset=utf-8";
 
             var builder = new StringBuilder().AppendLine("@startuml");
 
-            foreach (var participant in components.Participants)
+            FilterCallsAndCommentsByComponents();
+            WriteCalledComponents(builder);
+
+            if (IsWholeMap)
             {
-                builder.AppendLine($@"{participant.Type ?? "component"} ""{participant.Name}""");
+                FilterNotCalledComponents();
+                WriteComponents(builder);
             }
 
-            foreach (var link in components.Links)
-            {
-                builder.AppendLine($@"""{link.From}"" -- ""{link.To}""");
-            }
+            WriteComments(builder);
 
             await context.Response.WriteAsync(builder.AppendLine("@enduml").ToString());
         }
 
-        private void Filter(ComponentsDto components)
+        private void FilterCallsAndCommentsByComponents()
         {
-            components.Participants.RemoveAll(p => !p.Used);
+            calls.RemoveAll(call => !components.Any(component => call.ContainsTo(component) || call.ContainsFrom(component)));
+            comments.RemoveAll(comment => !components.Any(component => comment.ContainsOver(component)));
         }
 
-        private void Scale(ComponentsDto components)
+        private void FilterNotCalledComponents()
         {
-            foreach (var participant in components.Participants.Where(p => p.Scale > components.Scale))
+            components.RemoveAll(component => !calls.Any(call => call.ContainsTo(component) || call.ContainsFrom(component)));
+            components.RemoveAll(component => !comments.Any(comment => comment.ContainsOver(component)));
+        }
+
+        private void WriteCalledComponents(StringBuilder builder)
+        {
+            foreach (var call in calls)
             {
-                components.Links.RemoveAll(r => EqualsAny(participant.Name, r.From, r.To));
+                call.WriteToComponents(builder);
+            }
+        }
+
+        private void WriteComponents(StringBuilder builder)
+        {
+            foreach (var component in components)
+            {
+                component.WriteToComponents(builder);
+            }
+        }
+
+        private void WriteComments(StringBuilder builder)
+        {
+            foreach (var comment in comments)
+            {
+                comment.WriteToComponents(builder);
+            }
+        }
+
+        private bool IsWholeMap => cases.Count > 1;
+
+        public static ComponentsPresenter Create(string caseName, float? scale, IEnumerable<Element> elements)
+        {
+            var result = new ComponentsPresenter(caseName, scale);
+
+            foreach (var element in elements)
+            {
+                element.Accept(result);
             }
 
-            components.Participants.RemoveAll(p => p.Scale > components.Scale);
+            return result;
         }
     }
 }

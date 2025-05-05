@@ -3,10 +3,11 @@
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Introspector" Version="1.0.0-alpha.7" />
+    <ProjectReference Include="../Introspector/Introspector.csproj" />
   </ItemGroup>
 
 </Project>

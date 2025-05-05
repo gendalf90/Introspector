@@ -5,8 +5,6 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Introspector", "Introspector\Introspector.csproj", "{BCE0E1F7-5889-406A-9F5E-DE2CD4162B28}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Introspector.Generator", "Introspector.Generator\Introspector.Generator.csproj", "{C489F442-8ABE-4FA7-AB4C-B11C8B845ECC}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Introspector.Sample", "Introspector.Sample\Introspector.Sample.csproj", "{EFAAB184-E15F-42CF-A16B-1FA496C17D77}"
 EndProject
 Global
