@@ -5,7 +5,7 @@
     <TargetFrameworks>net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
-    <Version>1.0.0-alpha.7</Version>
+    <Version>1.0.0</Version>
     <Authors>gendalf90</Authors>
   </PropertyGroup>
 
