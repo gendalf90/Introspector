@@ -54,7 +54,7 @@ internal sealed class Case : Element
         }
         
         builder.AppendLine("title");
-        builder.AppendLine(text);
+        builder.AppendLine(@$"""{text}""");
         builder.AppendLine("end title");
     }
 
@@ -126,7 +126,7 @@ internal sealed class Case : Element
         return true;
     }
 
-    private class Deduplicator : Visitor
+    private class Deduplicator : IVisitor
     {
         private readonly HashSet<string> names = new();
         private readonly List<Case> toRemove = new();
@@ -137,7 +137,7 @@ internal sealed class Case : Element
             this.elements = elements;
         }
 
-        public override void Visit(Case value)
+        public void Visit(Case value)
         {
             if (!names.Add(value.name))
             {
@@ -151,6 +151,18 @@ internal sealed class Case : Element
             {
                 elements.Remove(@case);
             }
+        }
+
+        public void Visit(Component value)
+        {
+        }
+
+        public void Visit(Call value)
+        {
+        }
+
+        public void Visit(Comment value)
+        {
         }
     }
 }

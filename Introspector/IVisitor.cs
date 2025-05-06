@@ -10,14 +10,3 @@ internal interface IVisitor
 
     void Visit(Comment value);
 }
-
-internal abstract class Visitor : IVisitor
-{
-    public virtual void Visit(Case value) {}
-
-    public virtual void Visit(Component value) {}
-
-    public virtual void Visit(Call value) {}
-
-    public virtual void Visit(Comment value) {}
-}

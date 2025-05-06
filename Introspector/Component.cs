@@ -158,7 +158,7 @@ internal sealed class Component : Element, IEquatable<Component>
         return name == other.name;
     }
 
-    private class Deduplicator : Visitor
+    private class Deduplicator : IVisitor
     {
         private readonly HashSet<string> names = new();
         private readonly List<Component> toRemove = new();
@@ -169,12 +169,24 @@ internal sealed class Component : Element, IEquatable<Component>
             this.elements = elements;
         }
 
-        public override void Visit(Component value)
+        public void Visit(Component value)
         {
             if (!names.Add(value.name))
             {
                 toRemove.Add(value);
             }
+        }
+
+        public void Visit(Case value)
+        {
+        }
+
+        public void Visit(Call value)
+        {
+        }
+
+        public void Visit(Comment value)
+        {
         }
 
         public void Remove()

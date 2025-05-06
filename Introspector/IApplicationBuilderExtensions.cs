@@ -64,13 +64,14 @@ public static class IApplicationBuilderExtensions
 
         foreach (var path in options.XmlFilePaths)
         {
-            if (TryLoadXmlDocument(path, out var document))
-            {
-                Case.Parse(document, results);
-                Component.Parse(document, results);
-                Call.Parse(document, results);
-                Comment.Parse(document, results);
-            }
+            var document = new XmlDocument();
+
+            document.Load(path);
+
+            Case.Parse(document, results);
+            Component.Parse(document, results);
+            Call.Parse(document, results);
+            Comment.Parse(document, results);
         }
 
         Call.AddReferencedDependencies(results);
@@ -83,26 +84,6 @@ public static class IApplicationBuilderExtensions
         Component.Deduplicate(results);
 
         return results;
-    }
-
-    private static bool TryLoadXmlDocument(string path, out XmlDocument result)
-    {
-        result = null;
-
-        try
-        {
-            result = new XmlDocument();
-
-            result.Load(path);
-
-            return true;
-        }
-        catch (Exception e)
-        {
-            Debug.WriteLine(e);
-            
-            return false;
-        }
     }
 
     private static float? GetFloatQueryParam(HttpContext context, string name)
@@ -127,15 +108,29 @@ public static class IApplicationBuilderExtensions
         return context.Request.Query[name].FirstOrDefault();
     }
 
-    private class CasesPresenter : Visitor
+    private class CasesPresenter : IVisitor
     {
         private readonly List<Case> cases = new();
 
-        private CasesPresenter() { }
+        private CasesPresenter()
+        {    
+        }
 
-        public override void Visit(Case value)
+        public void Visit(Case value)
         {
             cases.Add(value);
+        }
+
+        public void Visit(Component value)
+        {
+        }
+
+        public void Visit(Call value)
+        {
+        }
+
+        public void Visit(Comment value)
+        {
         }
 
         public async Task Write(HttpContext context)
@@ -240,9 +235,6 @@ public static class IApplicationBuilderExtensions
                 return;
             }
 
-            FilterCallsByComponents();
-            FilterCommentsByComponents();
-
             context.Response.ContentType = "text/plain; charset=utf-8";
 
             var builder = new StringBuilder().AppendLine("@startuml");
@@ -250,18 +242,16 @@ public static class IApplicationBuilderExtensions
             currentCase.WriteSequenceTitle(builder);
 
             WriteComponents(builder);
+            FilterCallsAndCommentsByComponents();
             WriteMessages(builder);
 
             await context.Response.WriteAsync(builder.AppendLine("@enduml").ToString());
         }
 
-        private void FilterCallsByComponents()
+        private void FilterCallsAndCommentsByComponents()
         {
-            calls.RemoveAll(call => !components.Any(component => call.ContainsTo(component) || call.ContainsFrom(component)));
-        }
-
-        private void FilterCommentsByComponents()
-        {
+            calls.RemoveAll(call => !components.Any(component => call.ContainsTo(component)));
+            calls.RemoveAll(call => !components.Any(component => call.ContainsFrom(component)));
             comments.RemoveAll(comment => !components.Any(component => comment.ContainsOver(component)));
         }
 
@@ -403,33 +393,65 @@ public static class IApplicationBuilderExtensions
 
             var builder = new StringBuilder().AppendLine("@startuml");
 
-            FilterCallsAndCommentsByComponents();
-            WriteCalledComponents(builder);
-
             if (IsWholeMap)
             {
-                FilterNotCalledComponents();
-                WriteComponents(builder);
+                WriteAllComponents(builder);
+            }
+            else
+            {
+                WriteCaseComponents(builder);
             }
 
+            FilterCallsAndCommentsByComponents();
+            WriteCalls(builder);
             WriteComments(builder);
 
             await context.Response.WriteAsync(builder.AppendLine("@enduml").ToString());
         }
 
+        private void WriteCaseComponents(StringBuilder builder)
+        {
+            var written = new HashSet<Component>();
+
+            foreach (var call in calls)
+            {
+                var toWrite = components.Find(call.ContainsFrom);
+
+                if (toWrite != null && written.Add(toWrite))
+                {
+                    toWrite.WriteToComponents(builder);
+                }
+            }
+
+            foreach (var call in calls)
+            {
+                var toWrite = components.Find(call.ContainsTo);
+
+                if (toWrite != null && written.Add(toWrite))
+                {
+                    toWrite.WriteToComponents(builder);
+                }
+            }
+
+            foreach (var comment in comments)
+            {
+                var toWrite = components.Find(comment.ContainsOver);
+
+                if (toWrite != null && written.Add(toWrite))
+                {
+                    toWrite.WriteToComponents(builder);
+                }
+            }
+        }
+
         private void FilterCallsAndCommentsByComponents()
         {
-            calls.RemoveAll(call => !components.Any(component => call.ContainsTo(component) || call.ContainsFrom(component)));
+            calls.RemoveAll(call => !components.Any(component => call.ContainsTo(component)));
+            calls.RemoveAll(call => !components.Any(component => call.ContainsFrom(component)));
             comments.RemoveAll(comment => !components.Any(component => comment.ContainsOver(component)));
         }
 
-        private void FilterNotCalledComponents()
-        {
-            components.RemoveAll(component => !calls.Any(call => call.ContainsTo(component) || call.ContainsFrom(component)));
-            components.RemoveAll(component => !comments.Any(comment => comment.ContainsOver(component)));
-        }
-
-        private void WriteCalledComponents(StringBuilder builder)
+        private void WriteCalls(StringBuilder builder)
         {
             foreach (var call in calls)
             {
@@ -437,7 +459,7 @@ public static class IApplicationBuilderExtensions
             }
         }
 
-        private void WriteComponents(StringBuilder builder)
+        private void WriteAllComponents(StringBuilder builder)
         {
             foreach (var component in components)
             {

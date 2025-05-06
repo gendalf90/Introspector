@@ -205,25 +205,29 @@ internal sealed class Comment : Element
         return results;
     }
 
-    private class NotListedDependeciesCreator : Visitor
+    private class NotListedDependeciesCreator : IVisitor
     {
         private readonly List<Case> cases = new();
         private readonly List<Component> components = new();
         private readonly List<Comment> comments = new();
 
-        public override void Visit(Case value)
+        public void Visit(Case value)
         {
             cases.Add(value);
         }
 
-        public override void Visit(Component value)
+        public void Visit(Component value)
         {
             components.Add(value);
         }
 
-        public override void Visit(Comment value)
+        public void Visit(Comment value)
         {
             comments.Add(value);
+        }
+
+        public void Visit(Call value)
+        {
         }
 
         public void Create(List<Element> elements)
@@ -253,25 +257,29 @@ internal sealed class Comment : Element
         }
     }
 
-    private class ReferencedDependenciesCreator : Visitor
+    private class ReferencedDependenciesCreator : IVisitor
     {
         private readonly List<Case> cases = new();
         private readonly List<Component> components = new();
         private readonly List<Comment> comments = new();
 
-        public override void Visit(Case value)
+        public void Visit(Case value)
         {
             cases.Add(value);
         }
 
-        public override void Visit(Component value)
+        public void Visit(Component value)
         {
             components.Add(value);
         }
 
-        public override void Visit(Comment value)
+        public void Visit(Comment value)
         {
             comments.Add(value);
+        }
+
+        public void Visit(Call value)
+        {
         }
 
         public void Match()
@@ -300,16 +308,28 @@ internal sealed class Comment : Element
         }
     }
 
-    private class DependenciesDeduplicatorAndCleaner : Visitor
+    private class DependenciesDeduplicatorAndCleaner : IVisitor
     {
         private readonly HashSet<string> names = new();
 
-        public override void Visit(Comment value)
+        public void Visit(Comment value)
         {
             names.Clear();
             value.cases.RemoveAll(IsRemoved);
             names.Clear();
             value.over.RemoveAll(IsRemoved);
+        }
+
+        public void Visit(Case value)
+        {
+        }
+
+        public void Visit(Component value)
+        {
+        }
+
+        public void Visit(Call value)
+        {
         }
 
         private bool IsRemoved(InnerCase inner)
