@@ -2,17 +2,12 @@
 
   <PropertyGroup>
     <PackageId>Introspector</PackageId>
-    <TargetFrameworks>net6.0;net7.0;net8.0</TargetFrameworks>
+    <TargetFrameworks>net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <Version>1.0.0-alpha.7</Version>
     <Authors>gendalf90</Authors>
   </PropertyGroup>
-
-  <ItemGroup>
-    <PackageReference Include="YamlDotNet" Version="15.1.2" />
-    <PackageReference Include="Introspector.Generator" Version="1.0.0-alpha.5" />
-  </ItemGroup>
 
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />

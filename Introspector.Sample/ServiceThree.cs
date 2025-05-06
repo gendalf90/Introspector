@@ -1,47 +1,32 @@
 namespace Introspector.Sample
 {
-    /*
-    is: participant
-    name: service three
-    scale: 2.0
-    */
-    public class ServiceThree
+  /// <component name="service 3" type="participant" scale="2.0"/>
+  public class ServiceThree
+  {
+    /// <call>
+    ///     <case cref="ServiceOne" order="2.0"/>
+    ///     <case cref="ServiceTwo" order="2.0"/>
+    ///     <from cref="ServiceThree"/>
+    ///     <to name="database" />
+    ///     <text>call to database</text>
+    /// </call>
+    /// <call>
+    ///     <case cref="ServiceOne" order="2.2"/>
+    ///     <case cref="ServiceTwo" order="2.2"/>
+    ///     <from name="database"/>
+    ///     <to cref="ServiceThree"/>
+    ///     <text>result from database</text>
+    /// </call>
+    /// <comment>
+    ///     <case cref="ServiceOne" order="2.1"/>
+    ///     <case cref="ServiceTwo" order="2.1"/>
+    ///     <over name="database"/>
+    ///     <text>processing request to database</text>
+    /// </comment>
+    /// <component name="database" type="database" scale="3.0"/>
+    public int ReturnThree()
     {
-        /*
-        is: message
-        of-list:
-        - of: use case 1
-          order: 1.1
-        - of: use case 2
-          order: 2.1
-        from: service three
-        to: database
-        text: call database
-        */
-        public int ReturnThree()
-        {
-            /*
-            is: message
-            of-list:
-            - of: use case 1
-            - of: use case 2
-              order: 2.2
-            over: database
-            text: calculate some result
-            order: 1.2
-            */
-            return 3;
-            /*
-            is: message
-            of-list:
-            - of: use case 1
-              order: 1.3
-            - of: use case 2
-            from: database
-            to: service three
-            text: return value 3
-            order: 2.3
-            */
-        }
+      return 3;
     }
+  }
 }

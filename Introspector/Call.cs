@@ -3,19 +3,21 @@ using System.Xml;
 
 namespace Introspector;
 
-internal sealed class Comment : Element
+internal sealed class Call : Element
 {
     private record InnerCase(string Key, string Name, float? Order);
     private record InnerComponent(string Key, string Name);
 
     private readonly List<InnerCase> cases;
-    private readonly List<InnerComponent> over;
+    private readonly List<InnerComponent> from;
+    private readonly List<InnerComponent> to;
     private readonly string text;
 
-    private Comment(List<InnerCase> cases, List<InnerComponent> over, string text)
+    private Call(List<InnerCase> cases, List<InnerComponent> from, List<InnerComponent> to, string text)
     {
         this.cases = cases;
-        this.over = over;
+        this.from = from;
+        this.to = to;
         this.text = text;
     }
 
@@ -24,9 +26,14 @@ internal sealed class Comment : Element
         cases.Add(new InnerCase(key, name, order));
     }
 
-    public void AddOver(string key, string name)
+    public void AddTo(string key, string name)
     {
-        over.Add(new InnerComponent(key, name));
+        to.Add(new InnerComponent(key, name));
+    }
+
+    public void AddFrom(string key, string name)
+    {
+        from.Add(new InnerComponent(key, name));
     }
 
     public bool HasCase(string name)
@@ -34,9 +41,14 @@ internal sealed class Comment : Element
         return cases.Any(@case => @case.Name == name);
     }
 
-    public bool ContainsOver(Component component)
+    public bool ContainsTo(Component component)
     {
-        return over.Any(inner => component.HasName(inner.Name));
+        return to.Any(inner => component.HasName(inner.Name));
+    }
+
+    public bool ContainsFrom(Component component)
+    {
+        return from.Any(inner => component.HasName(inner.Name));
     }
 
     public float? GetCaseOrder(string name)
@@ -46,16 +58,23 @@ internal sealed class Comment : Element
 
     public void WriteToSequence(StringBuilder builder)
     {
-        var components = over.Select(inner => $@"""{inner.Name}""").ToArray();
-
-        builder.AppendLine($@"note over {string.Join(',', components)} : ""{text}""");
+        foreach (var innerFrom in from)
+        {
+            foreach (var innerTo in to)
+            {
+                builder.AppendLine($@"""{innerFrom.Name}"" -> ""{innerTo.Name}"" : ""{text}""");
+            }
+        }
     }
 
     public void WriteToComponents(StringBuilder builder)
     {
-        foreach (var name in over.Select(inner => inner.Name))
+        foreach (var innerFrom in from)
         {
-            builder.AppendLine($@"note right of [""{name}""] : ""{text}""");
+            foreach (var innerTo in to)
+            {
+                builder.AppendLine($@"[""{innerFrom.Name}""] --> [""{innerTo.Name}""] : ""{text}""");
+            }
         }
     }
 
@@ -109,16 +128,16 @@ internal sealed class Comment : Element
 
         foreach (XmlNode member in members)
         {
-            var comments = member.SelectNodes("comment");
+            var calls = member.SelectNodes("call");
 
-            if (comments == null)
+            if (calls == null)
             {
                 continue;
             }
 
-            foreach (XmlNode comment in comments)
+            foreach (XmlNode call in calls)
             {
-                if (TryParse(comment, out var result))
+                if (TryParse(call, out var result))
                 {
                     elements.Add(result);
                 }
@@ -126,7 +145,7 @@ internal sealed class Comment : Element
         }
     }
 
-    private static bool TryParse(XmlNode node, out Comment result)
+    private static bool TryParse(XmlNode node, out Call result)
     {
         result = null;
 
@@ -137,16 +156,23 @@ internal sealed class Comment : Element
             return false;
         }
 
-        var over = ParseComponents(node.SelectNodes("over"));
+        var from = ParseComponents(node.SelectNodes("from"));
 
-        if (over.Count == 0)
+        if (from.Count == 0)
+        {
+            return false;
+        }
+
+        var to = ParseComponents(node.SelectNodes("to"));
+
+        if (to.Count == 0)
         {
             return false;
         }
 
         var text = node.SelectSingleNode("text/text()")?.Value;
 
-        result = new Comment(cases, over, text);
+        result = new Call(cases, from, to, text);
 
         return true;
     }
@@ -209,7 +235,7 @@ internal sealed class Comment : Element
     {
         private readonly List<Case> cases = new();
         private readonly List<Component> components = new();
-        private readonly List<Comment> comments = new();
+        private readonly List<Call> calls = new();
 
         public void Visit(Case value)
         {
@@ -221,22 +247,25 @@ internal sealed class Comment : Element
             components.Add(value);
         }
 
-        public void Visit(Comment value)
+        public void Visit(Call value)
         {
-            comments.Add(value);
+            calls.Add(value);
         }
 
-        public void Visit(Call value)
+        public void Visit(Comment value)
         {
         }
 
         public void Create(List<Element> elements)
         {
-            var dependentCaseNames = comments
-                .SelectMany(comment => comment.cases.Select(@case => @case.Name))
+            var dependentCaseNames = calls
+                .SelectMany(call => call.cases.Select(@case => @case.Name))
                 .Where(name => !string.IsNullOrWhiteSpace(name));
-            var dependentComponentOverNames = comments
-                .SelectMany(comment => comment.over.Select(component => component.Name))
+            var dependentComponentFromNames = calls
+                .SelectMany(call => call.from.Select(component => component.Name))
+                .Where(name => !string.IsNullOrWhiteSpace(name));
+            var dependentComponentToNames = calls
+                .SelectMany(call => call.to.Select(component => component.Name))
                 .Where(name => !string.IsNullOrWhiteSpace(name));
 
             foreach (var caseName in dependentCaseNames.Distinct())
@@ -247,7 +276,7 @@ internal sealed class Comment : Element
                 }
             }
 
-            foreach (var componentName in dependentComponentOverNames.Distinct())
+            foreach (var componentName in dependentComponentFromNames.Concat(dependentComponentToNames).Distinct())
             {
                 if (!components.Any(component => component.HasName(componentName)))
                 {
@@ -261,7 +290,7 @@ internal sealed class Comment : Element
     {
         private readonly List<Case> cases = new();
         private readonly List<Component> components = new();
-        private readonly List<Comment> comments = new();
+        private readonly List<Call> calls = new();
 
         public void Visit(Case value)
         {
@@ -273,37 +302,46 @@ internal sealed class Comment : Element
             components.Add(value);
         }
 
-        public void Visit(Comment value)
+        public void Visit(Call value)
         {
-            comments.Add(value);
+            calls.Add(value);
         }
 
-        public void Visit(Call value)
+        public void Visit(Comment value)
         {
         }
 
         public void Match()
         {
-            foreach (var comment in comments)
+            foreach (var call in calls)
             {
-                MatchCases(comment);
-                MatchComponentsOver(comment);
+                MatchCases(call);
+                MatchComponentsTo(call);
+                MatchComponentsFrom(call);
             }
         }
 
-        private void MatchCases(Comment comment)
+        private void MatchCases(Call call)
         {
-            foreach (var inner in comment.cases.ToList())
+            foreach (var inner in call.cases.ToList())
             {
-                cases.Find(@case => @case.HasKey(inner.Key))?.AddToComment(comment, inner.Order);
+                cases.Find(@case => @case.HasKey(inner.Key))?.AddToCall(call, inner.Order);
             }
         }
 
-        private void MatchComponentsOver(Comment comment)
+        private void MatchComponentsTo(Call call)
         {
-            foreach (var inner in comment.over.ToList())
+            foreach (var inner in call.to.ToList())
             {
-                components.Find(component => component.HasKey(inner.Key))?.AddToComment(comment);
+                components.Find(component => component.HasKey(inner.Key))?.AddToCall(call);
+            }
+        }
+
+        private void MatchComponentsFrom(Call call)
+        {
+            foreach (var inner in call.from.ToList())
+            {
+                components.Find(component => component.HasKey(inner.Key))?.AddFromCall(call);
             }
         }
     }
@@ -312,12 +350,14 @@ internal sealed class Comment : Element
     {
         private readonly HashSet<string> names = new();
 
-        public void Visit(Comment value)
+        public void Visit(Call value)
         {
             names.Clear();
             value.cases.RemoveAll(IsRemoved);
             names.Clear();
-            value.over.RemoveAll(IsRemoved);
+            value.to.RemoveAll(IsRemoved);
+            names.Clear();
+            value.from.RemoveAll(IsRemoved);
         }
 
         public void Visit(Case value)
@@ -328,7 +368,7 @@ internal sealed class Comment : Element
         {
         }
 
-        public void Visit(Call value)
+        public void Visit(Comment value)
         {
         }
 
