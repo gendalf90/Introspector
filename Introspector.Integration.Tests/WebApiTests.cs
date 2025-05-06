@@ -220,4 +220,23 @@ public class WebApiTests : IClassFixture<WebFixture>
             @enduml
             """, result.Trim('\n'));
     }
+
+    [Fact]
+    public async Task CheckComponentsOfCaseTwo()
+    {
+        var result = await client.GetStringAsync("/introspector/components?case=use%20case%20two");
+
+        Assert.Equal("""
+            @startuml
+            ["service three"]
+            ["service two"]
+            ["database"]
+            ["service three"] --> ["service two"] : "result of the call"
+            ["service two"] --> ["service three"] : "call service three"
+            ["service three"] --> ["database"] : "call to database"
+            ["database"] --> ["service three"] : "result from database"
+            note right of ["database"] : "processing request to database"
+            @enduml
+            """, result.Trim('\n'));
+    }
 }
