@@ -6,7 +6,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <Version>1.0.0</Version>
-    <Authors>gendalf90</Authors>
+    <Authors>Roman Boykov</Authors>
+    <RepositoryUrl>https://github.com/gendalf90/Introspector</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/gendalf90/Introspector</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>introspector;autodocumentation</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

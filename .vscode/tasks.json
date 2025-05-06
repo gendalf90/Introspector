@@ -7,7 +7,7 @@
             "type": "process",
             "args": [
                 "build",
-                "${workspaceFolder}/Introspector.Sample/Introspector.Sample.csproj",
+                "${workspaceFolder}/src/Introspector.Sample/Introspector.Sample.csproj",
                 "/property:GenerateFullPaths=true",
                 "/consoleloggerparameters:NoSummary"
             ],

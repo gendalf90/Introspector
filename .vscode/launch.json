@@ -6,7 +6,7 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/Introspector.Sample/bin/Debug/net8.0/Introspector.Sample.dll",
+            "program": "${workspaceFolder}/src/Introspector.Sample/bin/Debug/net8.0/Introspector.Sample.dll",
             "args": [],
             "cwd": "${workspaceFolder}",
             "stopAtEntry": false,
