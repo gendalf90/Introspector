@@ -24,9 +24,11 @@ public class WebApiTests : IClassFixture<WebFixture>
     {
         var results = await client.GetFromJsonAsync<CaseDto[]>("/introspector/cases");
 
-        Assert.Equal(2, results.Length);
+        Assert.Equal(4, results.Length);
         Assert.Contains(results, @case => @case.Name == "use case one" && @case.Text == "info about case one");
         Assert.Contains(results, @case => @case.Name == "use case two" && @case.Text == null);
+        Assert.Contains(results, @case => @case.Name == "ServiceOne" && @case.Text == "info about case of service one");
+        Assert.Contains(results, @case => @case.Name == "use case three" && @case.Text == null);
     }
 
     [Fact]
@@ -48,46 +50,57 @@ public class WebApiTests : IClassFixture<WebFixture>
             "info about case one"
             end title
             participant "service one"
-            participant "service three"
+            / note over "service one"
+            "info about service one"
+            end note
+            participant "ServiceOne"
+            participant "ServiceThree"
+            / note over "ServiceThree"
+            "info about ServiceThree"
+            end note
             database "database"
-            "service one" -> "service three" : "call service three"
-            "service three" -> "database" : "call to database"
-            note over "database" : "processing request to database"
-            "database" -> "service three" : "result from database"
-            "service three" -> "service one" : "result of the call"
+            "service one" -> "ServiceThree" : "call service three"
+            "ServiceOne" -> "ServiceThree" : "call service three"
+            "ServiceThree" -> "database" : "call to database"
+            note over "database"
+            "processing request to database"
+            end note
+            "database" -> "ServiceThree" : "result from database"
+            "ServiceThree" -> "service one" : "result of the call"
+            "ServiceThree" -> "ServiceOne" : "result of the call"
             @enduml
             """, result.Trim('\n'));
     }
 
     [Fact]
-    public async Task CheckSequenceOfCaseOneWithScale2()
+    public async Task CheckSequenceOfCaseServiceOne()
     {
-        var result = await client.GetStringAsync("/introspector/sequence?case=use%20case%20one&scale=2.0");
+        var result = await client.GetStringAsync("/introspector/sequence?case=ServiceOne");
 
         Assert.Equal("""
             @startuml
             title
-            "info about case one"
+            "info about case of service one"
             end title
             participant "service one"
-            participant "service three"
-            "service one" -> "service three" : "call service three"
-            "service three" -> "service one" : "result of the call"
-            @enduml
-            """, result.Trim('\n'));
-    }
-
-    [Fact]
-    public async Task CheckSequenceOfCaseOneWithScale1()
-    {
-        var result = await client.GetStringAsync("/introspector/sequence?case=use%20case%20one&scale=1.0");
-
-        Assert.Equal("""
-            @startuml
-            title
-            "info about case one"
-            end title
-            participant "service one"
+            / note over "service one"
+            "info about service one"
+            end note
+            participant "ServiceOne"
+            participant "ServiceThree"
+            / note over "ServiceThree"
+            "info about ServiceThree"
+            end note
+            database "database"
+            "service one" -> "ServiceThree" : "call service three"
+            "ServiceOne" -> "ServiceThree" : "call service three"
+            "ServiceThree" -> "database" : "call to database"
+            note over "database"
+            "processing request to database"
+            end note
+            "database" -> "ServiceThree" : "result from database"
+            "ServiceThree" -> "service one" : "result of the call"
+            "ServiceThree" -> "ServiceOne" : "result of the call"
             @enduml
             """, result.Trim('\n'));
     }
@@ -100,13 +113,42 @@ public class WebApiTests : IClassFixture<WebFixture>
         Assert.Equal("""
             @startuml
             participant "service two"
-            participant "service three"
+            participant "ServiceThree"
+            / note over "ServiceThree"
+            "info about ServiceThree"
+            end note
             database "database"
-            "service two" -> "service three" : "call service three"
-            "service three" -> "database" : "call to database"
-            note over "database" : "processing request to database"
-            "database" -> "service three" : "result from database"
-            "service three" -> "service two" : "result of the call"
+            "service two" -> "ServiceThree" : "call service three"
+            note over "ServiceThree"
+            "processing request to service three"
+            end note
+            "ServiceThree" -> "database" : "call to database"
+            note over "database"
+            "processing request to database"
+            end note
+            "database" -> "ServiceThree" : "result from database"
+            "ServiceThree" -> "service two" : "result of the call"
+            @enduml
+            """, result.Trim('\n'));
+    }
+
+    [Fact]
+    public async Task CheckSequenceOfCaseThree()
+    {
+        var result = await client.GetStringAsync("/introspector/sequence?case=use%20case%20three");
+
+        Assert.Equal("""
+            @startuml
+            participant "ServiceThree"
+            / note over "ServiceThree"
+            "info about ServiceThree"
+            end note
+            database "database"
+            "ServiceThree" -> "database" : "call to database"
+            note over "database"
+            "processing request to database"
+            end note
+            "database" -> "ServiceThree" : "result from database"
             @enduml
             """, result.Trim('\n'));
     }
@@ -119,50 +161,30 @@ public class WebApiTests : IClassFixture<WebFixture>
         Assert.Equal("""
             @startuml
             ["service one"]
-            ["service three"]
+            note right of ["service one"]
+            "info about service one"
+            end note
+            ["ServiceOne"]
+            ["ServiceThree"]
+            note right of ["ServiceThree"]
+            "info about ServiceThree"
+            ----
+            "processing request to service three"
+            end note
             ["database"]
+            note right of ["database"]
+            "processing request to database"
+            end note
             ["not called service"]
             ["service two"]
-            ["service three"] --> ["service one"] : "result of the call"
-            ["service one"] --> ["service three"] : "call service three"
-            ["service three"] --> ["service two"] : "result of the call"
-            ["service two"] --> ["service three"] : "call service three"
-            ["service three"] --> ["database"] : "call to database"
-            ["database"] --> ["service three"] : "result from database"
-            note right of ["database"] : "processing request to database"
-            @enduml
-            """, result.Trim('\n'));
-    }
-
-    [Fact]
-    public async Task CheckAllComponentsWithScale2()
-    {
-        var result = await client.GetStringAsync("/introspector/components?scale=2.0");
-
-        Assert.Equal("""
-            @startuml
-            ["service one"]
-            ["service three"]
-            ["not called service"]
-            ["service two"]
-            ["service three"] --> ["service one"] : "result of the call"
-            ["service one"] --> ["service three"] : "call service three"
-            ["service three"] --> ["service two"] : "result of the call"
-            ["service two"] --> ["service three"] : "call service three"
-            @enduml
-            """, result.Trim('\n'));
-    }
-
-    [Fact]
-    public async Task CheckAllComponentsWithScale1()
-    {
-        var result = await client.GetStringAsync("/introspector/components?scale=1.0");
-
-        Assert.Equal("""
-            @startuml
-            ["service one"]
-            ["not called service"]
-            ["service two"]
+            ["ServiceThree"] --> ["service one"] : "result of the call"
+            ["ServiceThree"] --> ["ServiceOne"] : "result of the call"
+            ["service one"] --> ["ServiceThree"] : "call service three"
+            ["ServiceOne"] --> ["ServiceThree"] : "call service three"
+            ["ServiceThree"] --> ["service two"] : "result of the call"
+            ["service two"] --> ["ServiceThree"] : "call service three"
+            ["ServiceThree"] --> ["database"] : "call to database"
+            ["database"] --> ["ServiceThree"] : "result from database"
             @enduml
             """, result.Trim('\n'));
     }
@@ -182,41 +204,53 @@ public class WebApiTests : IClassFixture<WebFixture>
 
         Assert.Equal("""
             @startuml
-            ["service three"]
+            ["ServiceThree"]
+            note right of ["ServiceThree"]
+            "info about ServiceThree"
+            end note
             ["service one"]
+            note right of ["service one"]
+            "info about service one"
+            end note
             ["database"]
-            ["service three"] --> ["service one"] : "result of the call"
-            ["service one"] --> ["service three"] : "call service three"
-            ["service three"] --> ["database"] : "call to database"
-            ["database"] --> ["service three"] : "result from database"
-            note right of ["database"] : "processing request to database"
+            note right of ["database"]
+            "processing request to database"
+            end note
+            ["ServiceThree"] --> ["service one"] : "result of the call"
+            ["ServiceThree"] --> ["ServiceOne"] : "result of the call"
+            ["service one"] --> ["ServiceThree"] : "call service three"
+            ["ServiceOne"] --> ["ServiceThree"] : "call service three"
+            ["ServiceThree"] --> ["database"] : "call to database"
+            ["database"] --> ["ServiceThree"] : "result from database"
             @enduml
             """, result.Trim('\n'));
     }
 
     [Fact]
-    public async Task CheckComponentsOfCaseOneWithScale2()
+    public async Task CheckComponentsOfCaseServiceOne()
     {
-        var result = await client.GetStringAsync("/introspector/components?case=use%20case%20one&scale=2.0");
+        var result = await client.GetStringAsync("/introspector/components?case=ServiceOne");
 
         Assert.Equal("""
             @startuml
-            ["service three"]
+            ["ServiceThree"]
+            note right of ["ServiceThree"]
+            "info about ServiceThree"
+            end note
             ["service one"]
-            ["service three"] --> ["service one"] : "result of the call"
-            ["service one"] --> ["service three"] : "call service three"
-            @enduml
-            """, result.Trim('\n'));
-    }
-
-    [Fact]
-    public async Task CheckComponentsOfCaseOneWithScale1()
-    {
-        var result = await client.GetStringAsync("/introspector/components?case=use%20case%20one&scale=1.0");
-
-        Assert.Equal("""
-            @startuml
-            ["service one"]
+            note right of ["service one"]
+            "info about service one"
+            end note
+            ["database"]
+            note right of ["database"]
+            "processing request to database"
+            end note
+            ["ServiceThree"] --> ["service one"] : "result of the call"
+            ["ServiceThree"] --> ["ServiceOne"] : "result of the call"
+            ["service one"] --> ["ServiceThree"] : "call service three"
+            ["ServiceOne"] --> ["ServiceThree"] : "call service three"
+            ["ServiceThree"] --> ["database"] : "call to database"
+            ["database"] --> ["ServiceThree"] : "result from database"
             @enduml
             """, result.Trim('\n'));
     }
@@ -228,14 +262,42 @@ public class WebApiTests : IClassFixture<WebFixture>
 
         Assert.Equal("""
             @startuml
-            ["service three"]
+            ["ServiceThree"]
+            note right of ["ServiceThree"]
+            "info about ServiceThree"
+            ----
+            "processing request to service three"
+            end note
             ["service two"]
             ["database"]
-            ["service three"] --> ["service two"] : "result of the call"
-            ["service two"] --> ["service three"] : "call service three"
-            ["service three"] --> ["database"] : "call to database"
-            ["database"] --> ["service three"] : "result from database"
-            note right of ["database"] : "processing request to database"
+            note right of ["database"]
+            "processing request to database"
+            end note
+            ["ServiceThree"] --> ["service two"] : "result of the call"
+            ["service two"] --> ["ServiceThree"] : "call service three"
+            ["ServiceThree"] --> ["database"] : "call to database"
+            ["database"] --> ["ServiceThree"] : "result from database"
+            @enduml
+            """, result.Trim('\n'));
+    }
+
+    [Fact]
+    public async Task CheckComponentsOfCaseThree()
+    {
+        var result = await client.GetStringAsync("/introspector/components?case=use%20case%20three");
+
+        Assert.Equal("""
+            @startuml
+            ["ServiceThree"]
+            note right of ["ServiceThree"]
+            "info about ServiceThree"
+            end note
+            ["database"]
+            note right of ["database"]
+            "processing request to database"
+            end note
+            ["ServiceThree"] --> ["database"] : "call to database"
+            ["database"] --> ["ServiceThree"] : "result from database"
             @enduml
             """, result.Trim('\n'));
     }

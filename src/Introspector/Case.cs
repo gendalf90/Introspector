@@ -116,14 +116,33 @@ internal sealed class Case : Element
         var name = node.SelectSingleNode("@name")?.Value;
         var text = node.SelectSingleNode("text()")?.Value;
 
-        if (string.IsNullOrEmpty(name))
+        name = string.IsNullOrEmpty(name)
+            ? GetNameFromKey(key)
+            : name;
+
+        if (string.IsNullOrWhiteSpace(name))
         {
             return false;
         }
 
-        result = new Case(key, text, name.ToLower());
+        result = new Case(key, TrimText(text), name);
 
         return true;
+    }
+
+    private static string TrimText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return text;
+        }
+
+        return string.Join('\n', text.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private static string GetNameFromKey(string key)
+    {
+        return key.Split(':', '.').LastOrDefault();
     }
 
     private class Deduplicator : IVisitor

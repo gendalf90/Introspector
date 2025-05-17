@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Text;
 using System.Xml;
 using Microsoft.AspNetCore.Builder;
@@ -31,8 +30,7 @@ public static class IApplicationBuilderExtensions
             builder.Run(async context =>
             {
                 var caseName = GetStringQueryParam(context, "case");
-                var scale = GetFloatQueryParam(context, "scale");
-                var presenter = SequencePresenter.Create(caseName, scale, elements);
+                var presenter = SequencePresenter.Create(caseName, elements);
 
                 await presenter.Write(context);
             });
@@ -43,8 +41,7 @@ public static class IApplicationBuilderExtensions
             builder.Run(async context =>
             {
                 var caseName = GetStringQueryParam(context, "case");
-                var scale = GetFloatQueryParam(context, "scale");
-                var presenter = ComponentsPresenter.Create(caseName, scale, elements);
+                var presenter = ComponentsPresenter.Create(caseName, elements);
 
                 await presenter.Write(context);
             });
@@ -84,23 +81,6 @@ public static class IApplicationBuilderExtensions
         Component.Deduplicate(results);
 
         return results;
-    }
-
-    private static float? GetFloatQueryParam(HttpContext context, string name)
-    {
-        var value = context.Request.Query[name].FirstOrDefault();
-
-        if (string.IsNullOrEmpty(value))
-        {
-            return null;
-        }
-
-        if (float.TryParse(value, out var result))
-        {
-            return result;
-        }
-
-        return null;
     }
 
     private static string GetStringQueryParam(HttpContext context, string name)
@@ -181,17 +161,15 @@ public static class IApplicationBuilderExtensions
     private class SequencePresenter : IVisitor
     {
         private readonly string caseName;
-        private readonly float? scale;
 
         private Case currentCase;
         private readonly List<Component> components = new();
         private readonly List<Call> calls = new();
         private readonly List<Comment> comments = new();
 
-        private SequencePresenter(string caseName, float? scale)
+        private SequencePresenter(string caseName)
         {
             this.caseName = caseName;
-            this.scale = scale;
         }
 
         public void Visit(Case value)
@@ -204,10 +182,7 @@ public static class IApplicationBuilderExtensions
 
         public void Visit(Component value)
         {
-            if (!value.IsFiltered(scale))
-            {
-                components.Add(value);
-            }
+            components.Add(value);
         }
 
         public void Visit(Call value)
@@ -264,31 +239,34 @@ public static class IApplicationBuilderExtensions
 
             foreach (var call in orderedCalls)
             {
-                var toWrite = components.Find(call.ContainsFrom);
-
-                if (toWrite != null && written.Add(toWrite))
+                foreach (var toWrite in components.Where(call.ContainsFrom))
                 {
-                    toWrite.WriteToSequence(builder);
+                    if (written.Add(toWrite))
+                    {
+                        toWrite.WriteToSequence(builder);
+                    }
                 }
             }
 
             foreach (var call in orderedCalls)
             {
-                var toWrite = components.Find(call.ContainsTo);
-
-                if (toWrite != null && written.Add(toWrite))
+                foreach (var toWrite in components.Where(call.ContainsTo))
                 {
-                    toWrite.WriteToSequence(builder);
+                    if (written.Add(toWrite))
+                    {
+                        toWrite.WriteToSequence(builder);
+                    }
                 }
             }
 
             foreach (var comment in comments)
             {
-                var toWrite = components.Find(comment.ContainsOver);
-
-                if (toWrite != null && written.Add(toWrite))
+                foreach (var toWrite in components.Where(comment.ContainsOver))
                 {
-                    toWrite.WriteToSequence(builder);
+                    if (written.Add(toWrite))
+                    {
+                        toWrite.WriteToSequence(builder);
+                    }
                 }
             }
         }
@@ -313,9 +291,9 @@ public static class IApplicationBuilderExtensions
             }
         }
 
-        public static SequencePresenter Create(string caseName, float? scale, IEnumerable<Element> elements)
+        public static SequencePresenter Create(string caseName, IEnumerable<Element> elements)
         {
-            var result = new SequencePresenter(caseName, scale);
+            var result = new SequencePresenter(caseName);
 
             foreach (var element in elements)
             {
@@ -329,17 +307,15 @@ public static class IApplicationBuilderExtensions
     private class ComponentsPresenter : IVisitor
     {
         private readonly string caseName;
-        private readonly float? scale;
 
         private readonly List<Case> cases = new();
         private readonly List<Component> components = new();
         private readonly List<Call> calls = new();
         private readonly List<Comment> comments = new();
 
-        private ComponentsPresenter(string caseName, float? scale)
+        private ComponentsPresenter(string caseName)
         {
             this.caseName = caseName;
-            this.scale = scale;
         }
 
         public void Visit(Case value)
@@ -354,10 +330,7 @@ public static class IApplicationBuilderExtensions
 
         public void Visit(Component value)
         {
-            if (!value.IsFiltered(scale))
-            {
-                components.Add(value);
-            }
+            components.Add(value);
         }
 
         public void Visit(Call value)
@@ -404,7 +377,6 @@ public static class IApplicationBuilderExtensions
 
             FilterCallsAndCommentsByComponents();
             WriteCalls(builder);
-            WriteComments(builder);
 
             await context.Response.WriteAsync(builder.AppendLine("@enduml").ToString());
         }
@@ -419,7 +391,7 @@ public static class IApplicationBuilderExtensions
 
                 if (toWrite != null && written.Add(toWrite))
                 {
-                    toWrite.WriteToComponents(builder);
+                    toWrite.WriteToComponents(builder, comments);
                 }
             }
 
@@ -429,7 +401,7 @@ public static class IApplicationBuilderExtensions
 
                 if (toWrite != null && written.Add(toWrite))
                 {
-                    toWrite.WriteToComponents(builder);
+                    toWrite.WriteToComponents(builder, comments);
                 }
             }
 
@@ -439,7 +411,7 @@ public static class IApplicationBuilderExtensions
 
                 if (toWrite != null && written.Add(toWrite))
                 {
-                    toWrite.WriteToComponents(builder);
+                    toWrite.WriteToComponents(builder, comments);
                 }
             }
         }
@@ -463,23 +435,15 @@ public static class IApplicationBuilderExtensions
         {
             foreach (var component in components)
             {
-                component.WriteToComponents(builder);
-            }
-        }
-
-        private void WriteComments(StringBuilder builder)
-        {
-            foreach (var comment in comments)
-            {
-                comment.WriteToComponents(builder);
+                component.WriteToComponents(builder, comments);
             }
         }
 
         private bool IsWholeMap => cases.Count > 1;
 
-        public static ComponentsPresenter Create(string caseName, float? scale, IEnumerable<Element> elements)
+        public static ComponentsPresenter Create(string caseName, IEnumerable<Element> elements)
         {
-            var result = new ComponentsPresenter(caseName, scale);
+            var result = new ComponentsPresenter(caseName);
 
             foreach (var element in elements)
             {

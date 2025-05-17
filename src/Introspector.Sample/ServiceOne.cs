@@ -1,7 +1,7 @@
 namespace Introspector.Sample
 {
-    /// <case name="use case 1">info about case 1</case>
-    /// <component name="service 1" type="participant" scale="1.0"/>
+    /// <case name="Use Case 1">info about case 1</case>
+    /// <component name="Service 1" type="participant">info about service 1</component>
     public class ServiceOne
     {
         /// <call>

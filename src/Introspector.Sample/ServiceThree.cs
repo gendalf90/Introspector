@@ -1,6 +1,9 @@
 namespace Introspector.Sample
 {
-  /// <component name="service 3" type="participant" scale="2.0"/>
+  /// <component>
+  /// info about 
+  /// service three
+  /// </component>
   public class ServiceThree
   {
     /// <call>
@@ -23,7 +26,7 @@ namespace Introspector.Sample
     ///     <over name="database"/>
     ///     <text>processing request to database</text>
     /// </comment>
-    /// <component name="database" type="database" scale="3.0"/>
+    /// <component name="database" type="database"/>
     public int ReturnThree()
     {
       return 3;

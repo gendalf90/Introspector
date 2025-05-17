@@ -48,14 +48,19 @@ internal sealed class Comment : Element
     {
         var components = over.Select(inner => $@"""{inner.Name}""").ToArray();
 
-        builder.AppendLine($@"note over {string.Join(',', components)} : ""{text}""");
+        builder.AppendLine($@"note over {string.Join(',', components)}");
+        builder.AppendLine($@"""{text}""");
+        builder.AppendLine("end note");
     }
 
-    public void WriteToComponents(StringBuilder builder)
+    public void WriteToComponent(StringBuilder builder, Component component)
     {
-        foreach (var name in over.Select(inner => inner.Name))
+        foreach (var inner in over)
         {
-            builder.AppendLine($@"note right of [""{name}""] : ""{text}""");
+            if (component.HasName(inner.Name))
+            {
+                builder.AppendLine($@"""{text}""");
+            }
         }
     }
 
@@ -174,7 +179,7 @@ internal sealed class Comment : Element
                 ? parsedOrder
                 : null;
 
-            results.Add(new InnerCase(key, name?.ToLower(), order));
+            results.Add(new InnerCase(key, name, order));
         }
 
         return results;
@@ -199,7 +204,7 @@ internal sealed class Comment : Element
                 continue;
             }
 
-            results.Add(new InnerComponent(key, name?.ToLower()));
+            results.Add(new InnerComponent(key, name));
         }
 
         return results;
@@ -295,7 +300,10 @@ internal sealed class Comment : Element
         {
             foreach (var inner in comment.cases.ToList())
             {
-                cases.Find(@case => @case.HasKey(inner.Key))?.AddToComment(comment, inner.Order);
+                foreach (var found in cases.Where(@case => @case.HasKey(inner.Key)))
+                {
+                    found.AddToComment(comment, inner.Order);
+                }
             }
         }
 
@@ -303,7 +311,10 @@ internal sealed class Comment : Element
         {
             foreach (var inner in comment.over.ToList())
             {
-                components.Find(component => component.HasKey(inner.Key))?.AddToComment(comment);
+                foreach (var found in components.Where(component => component.HasKey(inner.Key)))
+                {
+                    found.AddToComment(comment);
+                }
             }
         }
     }

@@ -11,14 +11,14 @@ internal sealed class Component : Element, IEquatable<Component>
     private readonly string key;
     private readonly string name;
     private readonly string type;
-    private readonly float? scale;
+    private readonly string text;
 
-    private Component(string key, string name, string type, float? scale)
+    private Component(string key, string name, string type, string text)
     {
         this.key = key;
         this.name = name;
         this.type = type;
-        this.scale = scale;
+        this.text = text;
     }
 
     public void AddToCall(Call call, float? order)
@@ -51,19 +51,51 @@ internal sealed class Component : Element, IEquatable<Component>
         return name == value;
     }
 
-    public bool IsFiltered(float? scale)
-    {
-        return this.scale > scale;
-    }
-
     public void WriteToSequence(StringBuilder builder)
     {
         builder.AppendLine($@"{GetValidType()} ""{name}""");
+
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            builder.AppendLine($@"/ note over ""{name}""");
+            builder.AppendLine($@"""{text}""");
+            builder.AppendLine("end note");
+        }
     }
 
-    public void WriteToComponents(StringBuilder builder)
+    public void WriteToComponents(StringBuilder builder, IEnumerable<Comment> comments)
     {
         builder.AppendLine($@"[""{name}""]");
+
+        var componentComments = new List<Action>();
+
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            componentComments.Add(() => builder.AppendLine($@"""{text}"""));
+        }
+
+        componentComments.AddRange(comments
+            .Where(comment => comment.ContainsOver(this))
+            .Select<Comment, Action>(comment => () => comment.WriteToComponent(builder, this)));
+
+        if (componentComments.Count == 0)
+        {
+            return;
+        }
+
+        builder.AppendLine($@"note right of [""{name}""]");
+
+        for (int i = 0; i < componentComments.Count; i++)
+        {
+            if (i != 0)
+            {
+                builder.AppendLine("----");
+            }
+
+            componentComments[i].Invoke();
+        }
+
+        builder.AppendLine("end note");
     }
 
     public override void Accept(IVisitor visitor)
@@ -84,6 +116,13 @@ internal sealed class Component : Element, IEquatable<Component>
         }
 
         return type;
+    }
+
+    private string GetComponentsDescription()
+    {
+        return string.IsNullOrWhiteSpace(text)
+        ? string.Empty
+        : @$"[{name}\n----\n{text}] as";
     }
 
     public static void Create(List<Element> elements, string name)
@@ -138,19 +177,35 @@ internal sealed class Component : Element, IEquatable<Component>
         var key = member.SelectSingleNode("@name")?.Value;
         var name = node.SelectSingleNode("@name")?.Value;
         var type = node.SelectSingleNode("@type")?.Value;
+        var text = node.SelectSingleNode("text()")?.Value;
 
-        float? scale = float.TryParse(node.SelectSingleNode("@scale")?.Value, out var parsedScale)
-            ? parsedScale
-            : null;
+        name = string.IsNullOrEmpty(name)
+            ? GetNameFromKey(key)
+            : name;
 
-        if (string.IsNullOrEmpty(name))
+        if (string.IsNullOrWhiteSpace(name))
         {
             return false;
         }
 
-        result = new Component(key, name.ToLower(), type?.ToLower(), scale);
+        result = new Component(key, name, type?.ToLower(), TrimText(text));
 
         return true;
+    }
+
+    private static string TrimText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return text;
+        }
+
+        return string.Join('\n', text.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
+    }
+
+    private static string GetNameFromKey(string key)
+    {
+        return key.Split(':', '.').LastOrDefault();
     }
 
     public bool Equals(Component other)

@@ -200,7 +200,7 @@ internal sealed class Call : Element
                 ? parsedOrder
                 : null;
 
-            results.Add(new InnerCase(key, name?.ToLower(), order));
+            results.Add(new InnerCase(key, name, order));
         }
 
         return results;
@@ -225,7 +225,7 @@ internal sealed class Call : Element
                 continue;
             }
 
-            results.Add(new InnerComponent(key, name?.ToLower()));
+            results.Add(new InnerComponent(key, name));
         }
 
         return results;
@@ -325,7 +325,10 @@ internal sealed class Call : Element
         {
             foreach (var inner in call.cases.ToList())
             {
-                cases.Find(@case => @case.HasKey(inner.Key))?.AddToCall(call, inner.Order);
+                foreach (var found in cases.Where(@case => @case.HasKey(inner.Key)))
+                {
+                    found.AddToCall(call, inner.Order);
+                }
             }
         }
 
@@ -333,7 +336,10 @@ internal sealed class Call : Element
         {
             foreach (var inner in call.to.ToList())
             {
-                components.Find(component => component.HasKey(inner.Key))?.AddToCall(call);
+                foreach (var found in components.Where(component => component.HasKey(inner.Key)))
+                {
+                    found.AddToCall(call);
+                }
             }
         }
 
@@ -341,7 +347,10 @@ internal sealed class Call : Element
         {
             foreach (var inner in call.from.ToList())
             {
-                components.Find(component => component.HasKey(inner.Key))?.AddFromCall(call);
+                foreach (var found in components.Where(component => component.HasKey(inner.Key)))
+                {
+                    found.AddFromCall(call);
+                }
             }
         }
     }

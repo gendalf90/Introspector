@@ -1,7 +1,7 @@
 namespace Introspector.Sample
 {
-    /// <case name="use case 2">info about case 1</case>
-    /// <component name="service 2" type="participant" scale="1.0"/>
+    /// <case>info about case of service two</case>
+    /// <component name="service 2" type="participant"/>
     public class ServiceTwo
     {
         /// <call>
@@ -11,7 +11,7 @@ namespace Introspector.Sample
         ///     <text>call service three</text>
         /// </call>
         /// <call>
-        ///     <case cref="ServiceTwo" order="1.1"/>
+        ///     <case cref="ServiceTwo" order="3"/>
         ///     <from cref="ServiceThree"/>
         ///     <to cref="ServiceTwo"/>
         ///     <text>result of the call</text>
