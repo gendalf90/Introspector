@@ -105,7 +105,7 @@ internal class Call : Element
         {
             foreach (var innerTo in to)
             {
-                builder.AppendLine($@"""{innerFrom}"" -> ""{innerTo}"" : ""{text}""");
+                builder.AppendLine($@"""{innerFrom}"" -> ""{innerTo}"" : {text}");
             }
         }
     }
@@ -116,7 +116,7 @@ internal class Call : Element
         {
             foreach (var innerTo in to)
             {
-                builder.AppendLine($@"[""{innerFrom}""] --> [""{innerTo}""] : ""{text}""");
+                builder.AppendLine($@"[""{innerFrom}""] --> [""{innerTo}""] : {text}");
             }
         }
     }
@@ -168,7 +168,7 @@ internal class Call : Element
             return false;
         }
 
-        result = new Call(text);
+        result = new Call(text?.JoinLines());
 
         foreach (var value in resultCases)
         {

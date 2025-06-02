@@ -79,7 +79,7 @@ internal class Comment : Element
         var components = over.Select(inner => $@"""{inner}""").ToArray();
 
         builder.AppendLine($@"note over {string.Join(',', components)}");
-        builder.AppendLine($@"""{text}""");
+        builder.AppendLine(text);
         builder.AppendLine("end note");
     }
 
@@ -89,7 +89,7 @@ internal class Comment : Element
         {
             if (component.HasName(inner))
             {
-                builder.AppendLine($@"""{text}""");
+                builder.AppendLine(text);
             }
         }
     }

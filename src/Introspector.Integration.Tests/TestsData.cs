@@ -39,7 +39,11 @@ public class ServiceTwo
     ///     <case name="use case two" order="1.0"/>
     ///     <from name="service two"/>
     ///     <to name="ServiceThree" />
-    ///     <text>call service three</text>
+    ///     <text>
+    ///         call
+    ///         service
+    ///         three
+    ///     </text>
     /// </call>
     /// <comment>
     ///     <case name="use case two" order="1.1"/>

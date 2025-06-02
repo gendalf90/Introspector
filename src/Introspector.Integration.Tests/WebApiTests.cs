@@ -57,27 +57,27 @@ public class WebApiTests : IClassFixture<WebFixture>
         Assert.Equal("""
             @startuml
             title
-            "info about case one"
+            info about case one
             end title
             participant "service one"
             / note over "service one"
-            "info about service one"
+            info about service one
             end note
             participant "ServiceOne"
             participant "ServiceThree"
             / note over "ServiceThree"
-            "info about ServiceThree"
+            info about ServiceThree
             end note
             database "database"
-            "service one" -> "ServiceThree" : "call service three"
-            "ServiceOne" -> "ServiceThree" : "call service three"
-            "ServiceThree" -> "database" : "call to database"
+            "service one" -> "ServiceThree" : call service three
+            "ServiceOne" -> "ServiceThree" : call service three
+            "ServiceThree" -> "database" : call to database
             note over "database"
-            "processing request to database"
+            processing request to database
             end note
-            "database" -> "ServiceThree" : "result from database"
-            "ServiceThree" -> "service one" : "result of the call"
-            "ServiceThree" -> "ServiceOne" : "result of the call"
+            "database" -> "ServiceThree" : result from database
+            "ServiceThree" -> "service one" : result of the call
+            "ServiceThree" -> "ServiceOne" : result of the call
             @enduml
             """, result.Trim('\n'));
     }
@@ -90,27 +90,27 @@ public class WebApiTests : IClassFixture<WebFixture>
         Assert.Equal("""
             @startuml
             title
-            "info about case of service one"
+            info about case of service one
             end title
             participant "service one"
             / note over "service one"
-            "info about service one"
+            info about service one
             end note
             participant "ServiceOne"
             participant "ServiceThree"
             / note over "ServiceThree"
-            "info about ServiceThree"
+            info about ServiceThree
             end note
             database "database"
-            "service one" -> "ServiceThree" : "call service three"
-            "ServiceOne" -> "ServiceThree" : "call service three"
-            "ServiceThree" -> "database" : "call to database"
+            "service one" -> "ServiceThree" : call service three
+            "ServiceOne" -> "ServiceThree" : call service three
+            "ServiceThree" -> "database" : call to database
             note over "database"
-            "processing request to database"
+            processing request to database
             end note
-            "database" -> "ServiceThree" : "result from database"
-            "ServiceThree" -> "service one" : "result of the call"
-            "ServiceThree" -> "ServiceOne" : "result of the call"
+            "database" -> "ServiceThree" : result from database
+            "ServiceThree" -> "service one" : result of the call
+            "ServiceThree" -> "ServiceOne" : result of the call
             @enduml
             """, result.Trim('\n'));
     }
@@ -125,19 +125,19 @@ public class WebApiTests : IClassFixture<WebFixture>
             participant "service two"
             participant "ServiceThree"
             / note over "ServiceThree"
-            "info about ServiceThree"
+            info about ServiceThree
             end note
             database "database"
-            "service two" -> "ServiceThree" : "call service three"
+            "service two" -> "ServiceThree" : call\nservice\nthree
             note over "ServiceThree"
-            "processing request to service three"
+            processing request to service three
             end note
-            "ServiceThree" -> "database" : "call to database"
+            "ServiceThree" -> "database" : call to database
             note over "database"
-            "processing request to database"
+            processing request to database
             end note
-            "database" -> "ServiceThree" : "result from database"
-            "ServiceThree" -> "service two" : "result of the call"
+            "database" -> "ServiceThree" : result from database
+            "ServiceThree" -> "service two" : result of the call
             @enduml
             """, result.Trim('\n'));
     }
@@ -151,15 +151,15 @@ public class WebApiTests : IClassFixture<WebFixture>
             @startuml
             participant "ServiceThree"
             / note over "ServiceThree"
-            "info about ServiceThree"
+            info about ServiceThree
             end note
             database "database"
-            "ServiceThree" -> "database" : "call to database"
+            "ServiceThree" -> "database" : call to database
             note over "database"
-            "processing request to database"
+            processing request to database
             end note
-            "database" -> "ServiceThree" : "result from database"
-            "database" -> "ServiceThree" : "result from database"
+            "database" -> "ServiceThree" : result from database
+            "database" -> "ServiceThree" : result from database
             @enduml
             """, result.Trim('\n'));
     }
@@ -173,29 +173,29 @@ public class WebApiTests : IClassFixture<WebFixture>
             @startuml
             ["service one"]
             note right of ["service one"]
-            "info about service one"
+            info about service one
             end note
             ["ServiceOne"]
             ["ServiceThree"]
             note right of ["ServiceThree"]
-            "info about ServiceThree"
+            info about ServiceThree
             ----
-            "processing request to service three"
+            processing request to service three
             end note
             ["database"]
             note right of ["database"]
-            "processing request to database"
+            processing request to database
             end note
             ["not called service"]
             ["service two"]
-            ["ServiceThree"] --> ["service one"] : "result of the call"
-            ["ServiceThree"] --> ["ServiceOne"] : "result of the call"
-            ["service one"] --> ["ServiceThree"] : "call service three"
-            ["ServiceOne"] --> ["ServiceThree"] : "call service three"
-            ["ServiceThree"] --> ["service two"] : "result of the call"
-            ["service two"] --> ["ServiceThree"] : "call service three"
-            ["ServiceThree"] --> ["database"] : "call to database"
-            ["database"] --> ["ServiceThree"] : "result from database"
+            ["ServiceThree"] --> ["service one"] : result of the call
+            ["ServiceThree"] --> ["ServiceOne"] : result of the call
+            ["service one"] --> ["ServiceThree"] : call service three
+            ["ServiceOne"] --> ["ServiceThree"] : call service three
+            ["ServiceThree"] --> ["service two"] : result of the call
+            ["service two"] --> ["ServiceThree"] : call\nservice\nthree
+            ["ServiceThree"] --> ["database"] : call to database
+            ["database"] --> ["ServiceThree"] : result from database
             @enduml
             """, result.Trim('\n'));
     }
@@ -217,22 +217,22 @@ public class WebApiTests : IClassFixture<WebFixture>
             @startuml
             ["ServiceThree"]
             note right of ["ServiceThree"]
-            "info about ServiceThree"
+            info about ServiceThree
             end note
             ["service one"]
             note right of ["service one"]
-            "info about service one"
+            info about service one
             end note
             ["database"]
             note right of ["database"]
-            "processing request to database"
+            processing request to database
             end note
-            ["ServiceThree"] --> ["service one"] : "result of the call"
-            ["ServiceThree"] --> ["ServiceOne"] : "result of the call"
-            ["service one"] --> ["ServiceThree"] : "call service three"
-            ["ServiceOne"] --> ["ServiceThree"] : "call service three"
-            ["ServiceThree"] --> ["database"] : "call to database"
-            ["database"] --> ["ServiceThree"] : "result from database"
+            ["ServiceThree"] --> ["service one"] : result of the call
+            ["ServiceThree"] --> ["ServiceOne"] : result of the call
+            ["service one"] --> ["ServiceThree"] : call service three
+            ["ServiceOne"] --> ["ServiceThree"] : call service three
+            ["ServiceThree"] --> ["database"] : call to database
+            ["database"] --> ["ServiceThree"] : result from database
             @enduml
             """, result.Trim('\n'));
     }
@@ -246,22 +246,22 @@ public class WebApiTests : IClassFixture<WebFixture>
             @startuml
             ["ServiceThree"]
             note right of ["ServiceThree"]
-            "info about ServiceThree"
+            info about ServiceThree
             end note
             ["service one"]
             note right of ["service one"]
-            "info about service one"
+            info about service one
             end note
             ["database"]
             note right of ["database"]
-            "processing request to database"
+            processing request to database
             end note
-            ["ServiceThree"] --> ["service one"] : "result of the call"
-            ["ServiceThree"] --> ["ServiceOne"] : "result of the call"
-            ["service one"] --> ["ServiceThree"] : "call service three"
-            ["ServiceOne"] --> ["ServiceThree"] : "call service three"
-            ["ServiceThree"] --> ["database"] : "call to database"
-            ["database"] --> ["ServiceThree"] : "result from database"
+            ["ServiceThree"] --> ["service one"] : result of the call
+            ["ServiceThree"] --> ["ServiceOne"] : result of the call
+            ["service one"] --> ["ServiceThree"] : call service three
+            ["ServiceOne"] --> ["ServiceThree"] : call service three
+            ["ServiceThree"] --> ["database"] : call to database
+            ["database"] --> ["ServiceThree"] : result from database
             @enduml
             """, result.Trim('\n'));
     }
@@ -275,19 +275,19 @@ public class WebApiTests : IClassFixture<WebFixture>
             @startuml
             ["ServiceThree"]
             note right of ["ServiceThree"]
-            "info about ServiceThree"
+            info about ServiceThree
             ----
-            "processing request to service three"
+            processing request to service three
             end note
             ["service two"]
             ["database"]
             note right of ["database"]
-            "processing request to database"
+            processing request to database
             end note
-            ["ServiceThree"] --> ["service two"] : "result of the call"
-            ["service two"] --> ["ServiceThree"] : "call service three"
-            ["ServiceThree"] --> ["database"] : "call to database"
-            ["database"] --> ["ServiceThree"] : "result from database"
+            ["ServiceThree"] --> ["service two"] : result of the call
+            ["service two"] --> ["ServiceThree"] : call\nservice\nthree
+            ["ServiceThree"] --> ["database"] : call to database
+            ["database"] --> ["ServiceThree"] : result from database
             @enduml
             """, result.Trim('\n'));
     }
@@ -301,14 +301,14 @@ public class WebApiTests : IClassFixture<WebFixture>
             @startuml
             ["ServiceThree"]
             note right of ["ServiceThree"]
-            "info about ServiceThree"
+            info about ServiceThree
             end note
             ["database"]
             note right of ["database"]
-            "processing request to database"
+            processing request to database
             end note
-            ["ServiceThree"] --> ["database"] : "call to database"
-            ["database"] --> ["ServiceThree"] : "result from database"
+            ["ServiceThree"] --> ["database"] : call to database
+            ["database"] --> ["ServiceThree"] : result from database
             @enduml
             """, result.Trim('\n'));
     }

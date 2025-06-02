@@ -48,7 +48,7 @@ internal class Case : Element
         }
         
         builder.AppendLine("title");
-        builder.AppendLine(@$"""{text}""");
+        builder.AppendLine(text);
         builder.AppendLine("end title");
     }
 

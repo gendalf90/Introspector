@@ -45,7 +45,7 @@ internal class Component : Element, IEquatable<Component>
         if (!string.IsNullOrWhiteSpace(text))
         {
             builder.AppendLine($@"/ note over ""{name}""");
-            builder.AppendLine($@"""{text}""");
+            builder.AppendLine(text);
             builder.AppendLine("end note");
         }
     }
@@ -58,7 +58,7 @@ internal class Component : Element, IEquatable<Component>
 
         if (!string.IsNullOrWhiteSpace(text))
         {
-            componentComments.Add(() => builder.AppendLine($@"""{text}"""));
+            componentComments.Add(() => builder.AppendLine(text));
         }
 
         componentComments.AddRange(comments
@@ -100,13 +100,6 @@ internal class Component : Element, IEquatable<Component>
         }
 
         deduplicator.Remove();
-    }
-
-    private string GetComponentsDescription()
-    {
-        return string.IsNullOrWhiteSpace(text)
-        ? string.Empty
-        : @$"[{name}\n----\n{text}] as";
     }
 
     public static bool TryCreate(string name, string type, string text, out Component result)
