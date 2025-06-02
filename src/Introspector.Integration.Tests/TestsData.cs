@@ -73,6 +73,7 @@ public class ServiceThree
     ///     <case name="ServiceOne" order="2.2"/>
     ///     <case name="use case two" order="2.2"/>
     ///     <case name="use case three" order="3"/>
+    ///     <case name="use case three" order="3.1"/>
     ///     <from name="database"/>
     ///     <to name="ServiceThree"/>
     ///     <text>result from database</text>
@@ -83,7 +84,9 @@ public class ServiceThree
     ///     <case name="use case two" order="2.1"/>
     ///     <case name="use case three" order="2"/>
     ///     <over name="database"/>
-    ///     <text>processing request to database</text>
+    ///     <text>
+    ///         processing request to database
+    ///     </text>
     /// </comment>
     public void CallDatabase()
     {

@@ -159,6 +159,7 @@ public class WebApiTests : IClassFixture<WebFixture>
             "processing request to database"
             end note
             "database" -> "ServiceThree" : "result from database"
+            "database" -> "ServiceThree" : "result from database"
             @enduml
             """, result.Trim('\n'));
     }
