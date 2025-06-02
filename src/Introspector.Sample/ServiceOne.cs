@@ -5,20 +5,20 @@ namespace Introspector.Sample
     public class ServiceOne
     {
         /// <call>
-        ///     <case cref="ServiceOne" order="3.0"/>
-        ///     <from cref="ServiceThree"/>
-        ///     <to cref="ServiceOne"/>
+        ///     <case name="Use Case 1" order="3.0"/>
+        ///     <from name="Service 3"/>
+        ///     <to name="Service 1"/>
         ///     <text>result of the call</text>
         /// </call>
         /// <call>
-        ///     <case cref="ServiceOne" order="1.0"/>
-        ///     <from cref="ServiceOne"/>
-        ///     <to cref="ServiceThree"/>
+        ///     <case name="Use Case 1" order="1.0"/>
+        ///     <from name="Service 1"/>
+        ///     <to name="Service 3"/>
         ///     <text>call service three</text>
         /// </call>
         /// <comment>
-        ///     <case cref="ServiceOne" order="1.1"/>
-        ///     <over cref="ServiceThree"/>
+        ///     <case name="Use Case 1" order="1.1"/>
+        ///     <over name="Service 3"/>
         ///     <text>processing request from service one</text>
         /// </comment>
         public int GetResult()

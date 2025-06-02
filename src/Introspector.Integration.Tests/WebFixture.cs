@@ -1,5 +1,7 @@
 
 using Microsoft.AspNetCore.Builder;
+using Introspector.WebApi;
+using Introspector.Xml;
 
 namespace Introspector.Integration.Tests;
 
@@ -8,7 +10,7 @@ public class WebFixture : IDisposable
     private const string FileName = "Introspector.Integration.Tests.xml";
     private const string BaseAddress = "http://localhost:51000/";
 
-    private readonly WebApplication application = WebApplication.CreateBuilder().Build();
+    private readonly WebApplication application;
     
     public WebFixture()
     {
@@ -16,8 +18,14 @@ public class WebFixture : IDisposable
         {
             BaseAddress = new Uri(BaseAddress)
         };
+
+        var appBuilder = WebApplication.CreateBuilder();
+
+        appBuilder.Services.AddIntrospector("tests", builder => builder.ParseXmlDocFile(FileName));
+
+        application = appBuilder.Build();
         
-        application.UseIntrospector(opt => opt.XmlFilePaths = [FileName]);
+        application.UseIntrospector();
         application.Urls.Add(BaseAddress);
         application.StartAsync().Wait();
     }

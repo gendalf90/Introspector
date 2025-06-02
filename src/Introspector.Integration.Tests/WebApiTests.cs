@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 
 namespace Introspector.Integration.Tests;
 
@@ -22,13 +21,24 @@ public class WebApiTests : IClassFixture<WebFixture>
     [Fact]
     public async Task CheckAllCases()
     {
-        var results = await client.GetFromJsonAsync<CaseDto[]>("/introspector/cases");
+        var result = await client.GetStringAsync("/introspector/cases");
 
-        Assert.Equal(4, results.Length);
-        Assert.Contains(results, @case => @case.Name == "use case one" && @case.Text == "info about case one");
-        Assert.Contains(results, @case => @case.Name == "use case two" && @case.Text == null);
-        Assert.Contains(results, @case => @case.Name == "ServiceOne" && @case.Text == "info about case of service one");
-        Assert.Contains(results, @case => @case.Name == "use case three" && @case.Text == null);
+        Assert.Equal("""
+            @startuml
+            package "tests" {
+            usecase "use case one"
+            note right of "use case one"
+            info about case one
+            end note
+            usecase "ServiceOne"
+            note right of "ServiceOne"
+            info about case of service one
+            end note
+            usecase "use case two"
+            usecase "use case three"
+            }
+            @enduml
+            """, result.Trim());
     }
 
     [Fact]

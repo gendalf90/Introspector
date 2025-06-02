@@ -1,49 +1,36 @@
 using System.Text;
-using System.Xml;
 
 namespace Introspector;
 
-internal sealed class Component : Element, IEquatable<Component>
+internal class Component : Element, IEquatable<Component>
 {
     private const int DefaultTypeIndex = 0;
     private static string[] ValidTypes = ["participant", "actor", "database", "queue", "boundary", "control", "entity", "collections"];
 
-    private readonly string key;
     private readonly string name;
     private readonly string type;
     private readonly string text;
 
-    private Component(string key, string name, string type, string text)
+    private Component(string name, string type, string text)
     {
-        this.key = key;
         this.name = name;
         this.type = type;
         this.text = text;
     }
 
-    public void AddToCall(Call call, float? order)
+    public void LinkComment(Comment comment)
     {
-        call.AddCase(key, name, order);
+        comment.AddOver(name);
     }
 
-    public void AddToComment(Comment comment)
+    public void LinkTo(Call call)
     {
-        comment.AddOver(key, name);
+        call.AddTo(name);
     }
 
-    public void AddToCall(Call call)
+    public void LinkFrom(Call call)
     {
-        call.AddTo(key, name);
-    }
-
-    public void AddFromCall(Call call)
-    {
-        call.AddFrom(key, name);
-    }
-
-    public bool HasKey(string value)
-    {
-        return key == value;
+        call.AddFrom(name);
     }
 
     public bool HasName(string value)
@@ -53,7 +40,7 @@ internal sealed class Component : Element, IEquatable<Component>
 
     public void WriteToSequence(StringBuilder builder)
     {
-        builder.AppendLine($@"{GetValidType()} ""{name}""");
+        builder.AppendLine($@"{type} ""{name}""");
 
         if (!string.IsNullOrWhiteSpace(text))
         {
@@ -103,61 +90,6 @@ internal sealed class Component : Element, IEquatable<Component>
         visitor.Visit(this);
     }
 
-    private string GetValidType()
-    {
-        if (string.IsNullOrEmpty(type))
-        {
-            return ValidTypes[DefaultTypeIndex];
-        }
-
-        if (!ValidTypes.Contains(type))
-        {
-            return ValidTypes[DefaultTypeIndex];
-        }
-
-        return type;
-    }
-
-    private string GetComponentsDescription()
-    {
-        return string.IsNullOrWhiteSpace(text)
-        ? string.Empty
-        : @$"[{name}\n----\n{text}] as";
-    }
-
-    public static void Create(List<Element> elements, string name)
-    {
-        elements.Add(new Component(null, name, null, null));
-    }
-
-    public static void Parse(XmlDocument document, List<Element> elements)
-    {
-        var members = document.SelectNodes("/doc/members/member");
-
-        if (members == null)
-        {
-            return;
-        }
-
-        foreach (XmlNode member in members)
-        {
-            var components = member.SelectNodes("component");
-
-            if (components == null)
-            {
-                continue;
-            }
-
-            foreach (XmlNode component in components)
-            {
-                if (TryParse(member, component, out var result))
-                {
-                    elements.Add(result);
-                }
-            }
-        }
-    }
-
     public static void Deduplicate(List<Element> elements)
     {
         var deduplicator = new Deduplicator(elements);
@@ -170,42 +102,29 @@ internal sealed class Component : Element, IEquatable<Component>
         deduplicator.Remove();
     }
 
-    private static bool TryParse(XmlNode member, XmlNode node, out Component result)
+    private string GetComponentsDescription()
+    {
+        return string.IsNullOrWhiteSpace(text)
+        ? string.Empty
+        : @$"[{name}\n----\n{text}] as";
+    }
+
+    public static bool TryCreate(string name, string type, string text, out Component result)
     {
         result = null;
-
-        var key = member.SelectSingleNode("@name")?.Value;
-        var name = node.SelectSingleNode("@name")?.Value;
-        var type = node.SelectSingleNode("@type")?.Value;
-        var text = node.SelectSingleNode("text()")?.Value;
-
-        name = string.IsNullOrEmpty(name)
-            ? GetNameFromKey(key)
-            : name;
 
         if (string.IsNullOrWhiteSpace(name))
         {
             return false;
         }
 
-        result = new Component(key, name, type?.ToLower(), TrimText(text));
+        var resultType = string.IsNullOrWhiteSpace(type) || !ValidTypes.Contains(type)
+            ? ValidTypes[DefaultTypeIndex]
+            : type;
+
+        result = new Component(name, resultType, text);
 
         return true;
-    }
-
-    private static string TrimText(string text)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return text;
-        }
-
-        return string.Join('\n', text.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
-    }
-
-    private static string GetNameFromKey(string key)
-    {
-        return key.Split(':', '.').LastOrDefault();
     }
 
     public bool Equals(Component other)

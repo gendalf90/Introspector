@@ -7,7 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../Introspector/Introspector.csproj" />
+    <ProjectReference Include="..\Introspector.WebApi\Introspector.WebApi.csproj" />
+    <ProjectReference Include="..\Introspector.Xml\Introspector.Xml.csproj" />
   </ItemGroup>
 
 </Project>

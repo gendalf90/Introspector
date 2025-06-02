@@ -1,19 +1,19 @@
 namespace Introspector.Sample
 {
-    /// <case>info about case of service two</case>
+    /// <case name="Use Case 2">info about case 2</case>
     /// <component name="service 2" type="participant"/>
     public class ServiceTwo
     {
         /// <call>
-        ///     <case cref="ServiceTwo" order="1.0"/>
-        ///     <from cref="ServiceTwo"/>
-        ///     <to cref="ServiceThree" />
+        ///     <case name="Use Case 2" order="1.0"/>
+        ///     <from name="service 2"/>
+        ///     <to name="Service 3" />
         ///     <text>call service three</text>
         /// </call>
         /// <call>
-        ///     <case cref="ServiceTwo" order="3"/>
-        ///     <from cref="ServiceThree"/>
-        ///     <to cref="ServiceTwo"/>
+        ///     <case name="Use Case 2" order="3"/>
+        ///     <from name="Service 3"/>
+        ///     <to name="service 2"/>
         ///     <text>result of the call</text>
         /// </call>
         public string GetResult()

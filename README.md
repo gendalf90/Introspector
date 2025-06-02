@@ -27,7 +27,7 @@ http://localhost:3000/introspector/components?case={UseCaseName}
 
 Examples:
 http://localhost:3000/introspector/components
-http://localhost:3000/introspector/components?case=ServiceTwo
+http://localhost:3000/introspector/components?case=Use%20Case%201
 ```
 
 Then you can use [PlantUml Service](https://editor.plantuml.com/) to draw the output diagrams.

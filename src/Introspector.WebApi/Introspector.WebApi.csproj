@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <PackageId>Introspector</PackageId>
+    <PackageId>Introspector.WebApi</PackageId>
     <TargetFrameworks>net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
@@ -10,7 +10,15 @@
     <RepositoryUrl>https://github.com/gendalf90/Introspector</RepositoryUrl>
     <PackageProjectUrl>https://github.com/gendalf90/Introspector</PackageProjectUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageTags>introspector;autodocumentation</PackageTags>
+    <PackageTags>introspector;autodocumentation;web;api</PackageTags>
   </PropertyGroup>
+
+   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+   <ItemGroup>
+     <ProjectReference Include="..\Introspector\Introspector.csproj" />
+   </ItemGroup>
 
 </Project>

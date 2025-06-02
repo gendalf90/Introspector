@@ -1,39 +1,70 @@
 using System.Text;
-using System.Xml;
 
 namespace Introspector;
 
-internal sealed class Call : Element
+internal class Call : Element
 {
-    private record InnerCase(string Key, string Name, float? Order);
-    private record InnerComponent(string Key, string Name);
+    private record InnerCase(string Name, float? Order);
 
-    private readonly List<InnerCase> cases;
-    private readonly List<InnerComponent> from;
-    private readonly List<InnerComponent> to;
+    private readonly List<InnerCase> cases = new();
+    private readonly HashSet<string> from = new();
+    private readonly HashSet<string> to = new();
     private readonly string text;
 
-    private Call(List<InnerCase> cases, List<InnerComponent> from, List<InnerComponent> to, string text)
+    private Call(string text)
     {
-        this.cases = cases;
-        this.from = from;
-        this.to = to;
         this.text = text;
     }
 
-    public void AddCase(string key, string name, float? order)
+    public void AddCase(string name, float? order)
     {
-        cases.Add(new InnerCase(key, name, order));
+        bool HasNoOrder(InnerCase inner) => inner.Name == name && !inner.Order.HasValue;
+
+        bool HasOrder(InnerCase inner) => inner.Name == name && inner.Order.HasValue;
+
+        bool HasCurrentOrder(InnerCase inner) => inner.Name == name && inner.Order == order;
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        if (order.HasValue && cases.Any(HasNoOrder))
+        {
+            cases.RemoveAll(HasNoOrder);
+        }
+
+        if (!order.HasValue && cases.Any(HasOrder))
+        {
+            return;
+        }
+
+        if (cases.Any(HasCurrentOrder))
+        {
+            return;
+        }
+        
+        cases.Add(new InnerCase(name, order));
     }
 
-    public void AddTo(string key, string name)
+    public void AddTo(string name)
     {
-        to.Add(new InnerComponent(key, name));
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        to.Add(name);
     }
 
-    public void AddFrom(string key, string name)
+    public void AddFrom(string name)
     {
-        from.Add(new InnerComponent(key, name));
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        from.Add(name);
     }
 
     public bool HasCase(string name)
@@ -43,17 +74,29 @@ internal sealed class Call : Element
 
     public bool ContainsTo(Component component)
     {
-        return to.Any(inner => component.HasName(inner.Name));
+        return to.Any(component.HasName);
     }
 
     public bool ContainsFrom(Component component)
     {
-        return from.Any(inner => component.HasName(inner.Name));
+        return from.Any(component.HasName);
     }
 
-    public float? GetCaseOrder(string name)
+    public float? GetFirstCaseOrder(Case @case)
     {
-        return cases.Find(inner => inner.Name == name)?.Order;
+        return cases
+            .Where(inner => @case.HasName(inner.Name))
+            .Select(inner => inner.Order)
+            .Order()
+            .FirstOrDefault();
+    }
+
+    public float?[] GetCaseOrders(Case @case)
+    {
+        return cases
+            .Where(inner => @case.HasName(inner.Name))
+            .Select(inner => inner.Order)
+            .ToArray();
     }
 
     public void WriteToSequence(StringBuilder builder)
@@ -62,7 +105,7 @@ internal sealed class Call : Element
         {
             foreach (var innerTo in to)
             {
-                builder.AppendLine($@"""{innerFrom.Name}"" -> ""{innerTo.Name}"" : ""{text}""");
+                builder.AppendLine($@"""{innerFrom}"" -> ""{innerTo}"" : ""{text}""");
             }
         }
     }
@@ -73,7 +116,7 @@ internal sealed class Call : Element
         {
             foreach (var innerTo in to)
             {
-                builder.AppendLine($@"[""{innerFrom.Name}""] --> [""{innerTo.Name}""] : ""{text}""");
+                builder.AppendLine($@"[""{innerFrom}""] --> [""{innerTo}""] : ""{text}""");
             }
         }
     }
@@ -95,16 +138,6 @@ internal sealed class Call : Element
         creator.Create(elements);
     }
 
-    public static void DeduplicateAndCleanDependecies(List<Element> elements)
-    {
-        var deduplicatorAndCleaner = new DependenciesDeduplicatorAndCleaner();
-
-        foreach (var element in elements)
-        {
-            element.Accept(deduplicatorAndCleaner);
-        }
-    }
-
     public static void AddReferencedDependencies(List<Element> elements)
     {
         var matcher = new ReferencedDependenciesCreator();
@@ -117,118 +150,42 @@ internal sealed class Call : Element
         matcher.Match();
     }
 
-    public static void Parse(XmlDocument document, List<Element> elements)
-    {
-        var members = document.SelectNodes("/doc/members/member");
-
-        if (members == null)
-        {
-            return;
-        }
-
-        foreach (XmlNode member in members)
-        {
-            var calls = member.SelectNodes("call");
-
-            if (calls == null)
-            {
-                continue;
-            }
-
-            foreach (XmlNode call in calls)
-            {
-                if (TryParse(call, out var result))
-                {
-                    elements.Add(result);
-                }
-            }
-        }
-    }
-
-    private static bool TryParse(XmlNode node, out Call result)
+    public static bool TryCreate(
+        (string Name, float? Order)[] cases,
+        string[] from,
+        string[] to,
+        string text,
+        out Call result)
     {
         result = null;
 
-        var cases = ParseCases(node.SelectNodes("case"));
+        var resultCases = cases?.Where(c => !string.IsNullOrWhiteSpace(c.Name));
+        var resultFrom = from?.NotEmpty();
+        var resultTo = to?.NotEmpty();
 
-        if (cases.Count == 0)
+        if (resultCases.IsNullOrEmpty() || resultFrom.IsNullOrEmpty() || resultTo.IsNullOrEmpty())
         {
             return false;
         }
 
-        var from = ParseComponents(node.SelectNodes("from"));
+        result = new Call(text);
 
-        if (from.Count == 0)
+        foreach (var value in resultCases)
         {
-            return false;
+            result.AddCase(value.Name, value.Order);
         }
 
-        var to = ParseComponents(node.SelectNodes("to"));
-
-        if (to.Count == 0)
+        foreach (var value in resultFrom)
         {
-            return false;
+            result.AddFrom(value);
         }
 
-        var text = node.SelectSingleNode("text/text()")?.Value;
-
-        result = new Call(cases, from, to, text);
+        foreach (var value in resultTo)
+        {
+            result.AddTo(value);
+        }
 
         return true;
-    }
-
-    private static List<InnerCase> ParseCases(XmlNodeList nodes)
-    {
-        if (nodes == null)
-        {
-            return null;
-        }
-
-        var results = new List<InnerCase>();
-
-        foreach (XmlNode @case in nodes)
-        {
-            var key = @case.SelectSingleNode("@cref")?.Value;
-            var name = @case.SelectSingleNode("@name")?.Value;
-
-            if (string.IsNullOrEmpty(key) && string.IsNullOrEmpty(name))
-            {
-                continue;
-            }
-
-            float? order = float.TryParse(@case.SelectSingleNode("@order")?.Value, out var parsedOrder)
-                ? parsedOrder
-                : null;
-
-            results.Add(new InnerCase(key, name, order));
-        }
-
-        return results;
-    }
-
-    private static List<InnerComponent> ParseComponents(XmlNodeList nodes)
-    {
-        if (nodes == null)
-        {
-            return null;
-        }
-
-        var results = new List<InnerComponent>();
-
-        foreach (XmlNode component in nodes)
-        {
-            var key = component.SelectSingleNode("@cref")?.Value;
-            var name = component.SelectSingleNode("@name")?.Value;
-
-            if (string.IsNullOrEmpty(key) && string.IsNullOrEmpty(name))
-            {
-                continue;
-            }
-
-            results.Add(new InnerComponent(key, name));
-        }
-
-        return results;
     }
 
     private class NotListedDependeciesCreator : IVisitor
@@ -262,25 +219,25 @@ internal sealed class Call : Element
                 .SelectMany(call => call.cases.Select(@case => @case.Name))
                 .Where(name => !string.IsNullOrWhiteSpace(name));
             var dependentComponentFromNames = calls
-                .SelectMany(call => call.from.Select(component => component.Name))
+                .SelectMany(call => call.from.Select(component => component))
                 .Where(name => !string.IsNullOrWhiteSpace(name));
             var dependentComponentToNames = calls
-                .SelectMany(call => call.to.Select(component => component.Name))
+                .SelectMany(call => call.to.Select(component => component))
                 .Where(name => !string.IsNullOrWhiteSpace(name));
 
             foreach (var caseName in dependentCaseNames.Distinct())
             {
-                if (!cases.Any(@case => @case.HasName(caseName)))
+                if (!cases.Any(@case => @case.HasName(caseName)) && Case.TryCreate(caseName, null, out var newCase))
                 {
-                    Case.Create(elements, caseName);
+                    elements.Add(newCase);
                 }
             }
 
             foreach (var componentName in dependentComponentFromNames.Concat(dependentComponentToNames).Distinct())
             {
-                if (!components.Any(component => component.HasName(componentName)))
+                if (!components.Any(component => component.HasName(componentName)) && Component.TryCreate(componentName, null, null, out var newComponent))
                 {
-                    Component.Create(elements, componentName);
+                    elements.Add(newComponent);
                 }
             }
         }
@@ -325,7 +282,7 @@ internal sealed class Call : Element
         {
             foreach (var inner in call.cases.ToList())
             {
-                foreach (var found in cases.Where(@case => @case.HasKey(inner.Key)))
+                foreach (var found in cases.Where(@case => @case.HasName(inner.Name)))
                 {
                     found.AddToCall(call, inner.Order);
                 }
@@ -336,9 +293,9 @@ internal sealed class Call : Element
         {
             foreach (var inner in call.to.ToList())
             {
-                foreach (var found in components.Where(component => component.HasKey(inner.Key)))
+                foreach (var found in components.Where(component => component.HasName(inner)))
                 {
-                    found.AddToCall(call);
+                    found.LinkTo(call);
                 }
             }
         }
@@ -347,48 +304,11 @@ internal sealed class Call : Element
         {
             foreach (var inner in call.from.ToList())
             {
-                foreach (var found in components.Where(component => component.HasKey(inner.Key)))
+                foreach (var found in components.Where(component => component.HasName(inner)))
                 {
-                    found.AddFromCall(call);
+                    found.LinkFrom(call);
                 }
             }
-        }
-    }
-
-    private class DependenciesDeduplicatorAndCleaner : IVisitor
-    {
-        private readonly HashSet<string> names = new();
-
-        public void Visit(Call value)
-        {
-            names.Clear();
-            value.cases.RemoveAll(IsRemoved);
-            names.Clear();
-            value.to.RemoveAll(IsRemoved);
-            names.Clear();
-            value.from.RemoveAll(IsRemoved);
-        }
-
-        public void Visit(Case value)
-        {
-        }
-
-        public void Visit(Component value)
-        {
-        }
-
-        public void Visit(Comment value)
-        {
-        }
-
-        private bool IsRemoved(InnerCase inner)
-        {
-            return string.IsNullOrWhiteSpace(inner.Name) || !names.Add(inner.Name);
-        }
-
-        private bool IsRemoved(InnerComponent inner)
-        {
-            return string.IsNullOrWhiteSpace(inner.Name) || !names.Add(inner.Name);
         }
     }
 }

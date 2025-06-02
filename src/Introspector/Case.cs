@@ -1,30 +1,26 @@
 using System.Text;
-using System.Text.Json;
-using System.Xml;
 
 namespace Introspector;
 
-internal sealed class Case : Element
+internal class Case : Element
 {
-    private readonly string key;
     private readonly string name;
     private readonly string text;
 
-    private Case(string key, string text, string name)
+    private Case(string name, string text)
     {
-        this.key = key;
-        this.text = text;
         this.name = name;
+        this.text = text;
     }
 
     public void AddToCall(Call call, float? order)
     {
-        call.AddCase(key, name, order);
+        call.AddCase(name, order);
     }
 
     public void AddToComment(Comment comment, float? order)
     {
-        comment.AddCase(key, name, order);
+        comment.AddCase(name, order);
     }
 
     public bool HasName(string value)
@@ -32,18 +28,16 @@ internal sealed class Case : Element
         return name == value;
     }
 
-    public bool HasKey(string value)
+    public void WriteUseCase(StringBuilder builder)
     {
-        return key == value;
-    }
+        builder.AppendLine(@$"usecase ""{name}""");
 
-    public void WriteJson(StringBuilder builder)
-    {
-        builder.Append(JsonSerializer.Serialize(new
+        if (!string.IsNullOrWhiteSpace(text))
         {
-            Name = name,
-            Text = text
-        }));
+            builder.AppendLine(@$"note right of ""{name}""");
+            builder.AppendLine(text);
+            builder.AppendLine("end note");
+        }
     }
 
     public void WriteSequenceTitle(StringBuilder builder)
@@ -63,37 +57,18 @@ internal sealed class Case : Element
         visitor.Visit(this);
     }
 
-    public static void Create(List<Element> elements, string name)
+    public static bool TryCreate(string name, string text, out Case result)
     {
-        elements.Add(new Case(null, null, name));
-    }
+        result = null;
 
-    public static void Parse(XmlDocument document, List<Element> elements)
-    {
-        var members = document.SelectNodes("/doc/members/member");
-
-        if (members == null)
+        if (string.IsNullOrWhiteSpace(name))
         {
-            return;
+            return false;
         }
 
-        foreach (XmlNode member in members)
-        {
-            var cases = member.SelectNodes("case");
+        result = new Case(name, text);
 
-            if (cases == null)
-            {
-                continue;
-            }
-
-            foreach (XmlNode @case in cases)
-            {
-                if (TryParse(member, @case, out var result))
-                {
-                    elements.Add(result);
-                }
-            }
-        }
+        return true;
     }
 
     public static void Deduplicate(List<Element> elements)
@@ -106,43 +81,6 @@ internal sealed class Case : Element
         }
 
         deduplicator.Remove();
-    }
-
-    private static bool TryParse(XmlNode member, XmlNode node, out Case result)
-    {
-        result = null;
-
-        var key = member.SelectSingleNode("@name")?.Value;
-        var name = node.SelectSingleNode("@name")?.Value;
-        var text = node.SelectSingleNode("text()")?.Value;
-
-        name = string.IsNullOrEmpty(name)
-            ? GetNameFromKey(key)
-            : name;
-
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return false;
-        }
-
-        result = new Case(key, TrimText(text), name);
-
-        return true;
-    }
-
-    private static string TrimText(string text)
-    {
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return text;
-        }
-
-        return string.Join('\n', text.Split('\n', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries));
-    }
-
-    private static string GetNameFromKey(string key)
-    {
-        return key.Split(':', '.').LastOrDefault();
     }
 
     private class Deduplicator : IVisitor

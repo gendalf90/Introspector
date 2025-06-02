@@ -1,32 +1,59 @@
 using System.Text;
-using System.Xml;
 
 namespace Introspector;
 
-internal sealed class Comment : Element
+internal class Comment : Element
 {
-    private record InnerCase(string Key, string Name, float? Order);
-    private record InnerComponent(string Key, string Name);
+    private record InnerCase(string Name, float? Order);
 
-    private readonly List<InnerCase> cases;
-    private readonly List<InnerComponent> over;
+    private readonly List<InnerCase> cases = new();
+    private readonly HashSet<string> over = new();
     private readonly string text;
 
-    private Comment(List<InnerCase> cases, List<InnerComponent> over, string text)
+    private Comment(string text)
     {
-        this.cases = cases;
-        this.over = over;
         this.text = text;
     }
 
-    public void AddCase(string key, string name, float? order)
+    public void AddCase(string name, float? order)
     {
-        cases.Add(new InnerCase(key, name, order));
+        bool HasNoOrder(InnerCase inner) => inner.Name == name && !inner.Order.HasValue;
+
+        bool HasOrder(InnerCase inner) => inner.Name == name && inner.Order.HasValue;
+
+        bool HasCurrentOrder(InnerCase inner) => inner.Name == name && inner.Order == order;
+
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        if (order.HasValue && cases.Any(HasNoOrder))
+        {
+            cases.RemoveAll(HasNoOrder);
+        }
+
+        if (!order.HasValue && cases.Any(HasOrder))
+        {
+            return;
+        }
+
+        if (cases.Any(HasCurrentOrder))
+        {
+            return;
+        }
+
+        cases.Add(new InnerCase(name, order));
     }
 
-    public void AddOver(string key, string name)
+    public void AddOver(string name)
     {
-        over.Add(new InnerComponent(key, name));
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return;
+        }
+
+        over.Add(name);
     }
 
     public bool HasCase(string name)
@@ -36,17 +63,20 @@ internal sealed class Comment : Element
 
     public bool ContainsOver(Component component)
     {
-        return over.Any(inner => component.HasName(inner.Name));
+        return over.Any(component.HasName);
     }
 
-    public float? GetCaseOrder(string name)
+    public float?[] GetCaseOrders(Case @case)
     {
-        return cases.Find(inner => inner.Name == name)?.Order;
+        return cases
+            .Where(inner => @case.HasName(inner.Name))
+            .Select(inner => inner.Order)
+            .ToArray();
     }
 
     public void WriteToSequence(StringBuilder builder)
     {
-        var components = over.Select(inner => $@"""{inner.Name}""").ToArray();
+        var components = over.Select(inner => $@"""{inner}""").ToArray();
 
         builder.AppendLine($@"note over {string.Join(',', components)}");
         builder.AppendLine($@"""{text}""");
@@ -57,7 +87,7 @@ internal sealed class Comment : Element
     {
         foreach (var inner in over)
         {
-            if (component.HasName(inner.Name))
+            if (component.HasName(inner))
             {
                 builder.AppendLine($@"""{text}""");
             }
@@ -81,16 +111,6 @@ internal sealed class Comment : Element
         creator.Create(elements);
     }
 
-    public static void DeduplicateAndCleanDependecies(List<Element> elements)
-    {
-        var deduplicatorAndCleaner = new DependenciesDeduplicatorAndCleaner();
-
-        foreach (var element in elements)
-        {
-            element.Accept(deduplicatorAndCleaner);
-        }
-    }
-
     public static void AddReferencedDependencies(List<Element> elements)
     {
         var matcher = new ReferencedDependenciesCreator();
@@ -103,111 +123,35 @@ internal sealed class Comment : Element
         matcher.Match();
     }
 
-    public static void Parse(XmlDocument document, List<Element> elements)
-    {
-        var members = document.SelectNodes("/doc/members/member");
-
-        if (members == null)
-        {
-            return;
-        }
-
-        foreach (XmlNode member in members)
-        {
-            var comments = member.SelectNodes("comment");
-
-            if (comments == null)
-            {
-                continue;
-            }
-
-            foreach (XmlNode comment in comments)
-            {
-                if (TryParse(comment, out var result))
-                {
-                    elements.Add(result);
-                }
-            }
-        }
-    }
-
-    private static bool TryParse(XmlNode node, out Comment result)
+    public static bool TryCreate(
+        (string Name, float? Order)[] cases,
+        string[] over,
+        string text,
+        out Comment result)
     {
         result = null;
 
-        var cases = ParseCases(node.SelectNodes("case"));
+        var resultCases = cases?.Where(c => !string.IsNullOrWhiteSpace(c.Name));
+        var resultOver = over?.NotEmpty();
 
-        if (cases.Count == 0)
+        if (resultCases.IsNullOrEmpty() || resultOver.IsNullOrEmpty())
         {
             return false;
         }
 
-        var over = ParseComponents(node.SelectNodes("over"));
+        result = new Comment(text);
 
-        if (over.Count == 0)
+        foreach (var value in resultCases)
         {
-            return false;
+            result.AddCase(value.Name, value.Order);
         }
 
-        var text = node.SelectSingleNode("text/text()")?.Value;
-
-        result = new Comment(cases, over, text);
+        foreach (var value in resultOver)
+        {
+            result.AddOver(value);
+        }
 
         return true;
-    }
-
-    private static List<InnerCase> ParseCases(XmlNodeList nodes)
-    {
-        if (nodes == null)
-        {
-            return null;
-        }
-
-        var results = new List<InnerCase>();
-
-        foreach (XmlNode @case in nodes)
-        {
-            var key = @case.SelectSingleNode("@cref")?.Value;
-            var name = @case.SelectSingleNode("@name")?.Value;
-
-            if (string.IsNullOrEmpty(key) && string.IsNullOrEmpty(name))
-            {
-                continue;
-            }
-
-            float? order = float.TryParse(@case.SelectSingleNode("@order")?.Value, out var parsedOrder)
-                ? parsedOrder
-                : null;
-
-            results.Add(new InnerCase(key, name, order));
-        }
-
-        return results;
-    }
-
-    private static List<InnerComponent> ParseComponents(XmlNodeList nodes)
-    {
-        if (nodes == null)
-        {
-            return null;
-        }
-
-        var results = new List<InnerComponent>();
-
-        foreach (XmlNode component in nodes)
-        {
-            var key = component.SelectSingleNode("@cref")?.Value;
-            var name = component.SelectSingleNode("@name")?.Value;
-
-            if (string.IsNullOrEmpty(key) && string.IsNullOrEmpty(name))
-            {
-                continue;
-            }
-
-            results.Add(new InnerComponent(key, name));
-        }
-
-        return results;
     }
 
     private class NotListedDependeciesCreator : IVisitor
@@ -241,22 +185,22 @@ internal sealed class Comment : Element
                 .SelectMany(comment => comment.cases.Select(@case => @case.Name))
                 .Where(name => !string.IsNullOrWhiteSpace(name));
             var dependentComponentOverNames = comments
-                .SelectMany(comment => comment.over.Select(component => component.Name))
+                .SelectMany(comment => comment.over.Select(component => component))
                 .Where(name => !string.IsNullOrWhiteSpace(name));
 
             foreach (var caseName in dependentCaseNames.Distinct())
             {
-                if (!cases.Any(@case => @case.HasName(caseName)))
+                if (!cases.Any(@case => @case.HasName(caseName)) && Case.TryCreate(caseName, null, out var newCase))
                 {
-                    Case.Create(elements, caseName);
+                    elements.Add(newCase);
                 }
             }
 
             foreach (var componentName in dependentComponentOverNames.Distinct())
             {
-                if (!components.Any(component => component.HasName(componentName)))
+                if (!components.Any(component => component.HasName(componentName)) && Component.TryCreate(componentName, null, null, out var newComponent))
                 {
-                    Component.Create(elements, componentName);
+                    elements.Add(newComponent);
                 }
             }
         }
@@ -300,7 +244,7 @@ internal sealed class Comment : Element
         {
             foreach (var inner in comment.cases.ToList())
             {
-                foreach (var found in cases.Where(@case => @case.HasKey(inner.Key)))
+                foreach (var found in cases.Where(@case => @case.HasName(inner.Name)))
                 {
                     found.AddToComment(comment, inner.Order);
                 }
@@ -311,46 +255,11 @@ internal sealed class Comment : Element
         {
             foreach (var inner in comment.over.ToList())
             {
-                foreach (var found in components.Where(component => component.HasKey(inner.Key)))
+                foreach (var found in components.Where(component => component.HasName(inner)))
                 {
-                    found.AddToComment(comment);
+                    found.LinkComment(comment);
                 }
             }
-        }
-    }
-
-    private class DependenciesDeduplicatorAndCleaner : IVisitor
-    {
-        private readonly HashSet<string> names = new();
-
-        public void Visit(Comment value)
-        {
-            names.Clear();
-            value.cases.RemoveAll(IsRemoved);
-            names.Clear();
-            value.over.RemoveAll(IsRemoved);
-        }
-
-        public void Visit(Case value)
-        {
-        }
-
-        public void Visit(Component value)
-        {
-        }
-
-        public void Visit(Call value)
-        {
-        }
-
-        private bool IsRemoved(InnerCase inner)
-        {
-            return string.IsNullOrWhiteSpace(inner.Name) || !names.Add(inner.Name);
-        }
-
-        private bool IsRemoved(InnerComponent inner)
-        {
-            return string.IsNullOrWhiteSpace(inner.Name) || !names.Add(inner.Name);
         }
     }
 }
