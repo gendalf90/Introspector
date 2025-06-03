@@ -5,7 +5,7 @@
     <TargetFrameworks>net8.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
-    <Version>2.0.1</Version>
+    <Version>2.0.2</Version>
     <Authors>Roman Boykov</Authors>
     <RepositoryUrl>https://github.com/gendalf90/Introspector</RepositoryUrl>
     <PackageProjectUrl>https://github.com/gendalf90/Introspector</PackageProjectUrl>
