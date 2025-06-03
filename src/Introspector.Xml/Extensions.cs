@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.Globalization;
+using System.Reflection;
 using System.Xml;
 
 namespace Introspector.Xml;
@@ -149,7 +150,7 @@ public static class Extensions
         {
             var name = value.SelectSingleNode("@name")?.Value;
 
-            float? order = float.TryParse(value.SelectSingleNode("@order")?.Value, out var parsedOrder)
+            float? order = float.TryParse(value.SelectSingleNode("@order")?.Value, CultureInfo.InvariantCulture, out var parsedOrder)
                 ? parsedOrder
                 : null;
 

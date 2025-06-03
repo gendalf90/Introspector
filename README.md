@@ -1,8 +1,10 @@
 # ![Logo](.docs/Imperium.jpg) ntrospector
 
-| NuGet |
-|-------|
-|[![NuGet](https://img.shields.io/nuget/v/Introspector.svg)](https://www.nuget.org/packages/Introspector/)|
+| Package | NuGet |
+|---------|-------|
+| Core |[![NuGet](https://img.shields.io/nuget/v/Introspector.svg)](https://www.nuget.org/packages/Introspector/)|
+| Web |[![NuGet](https://img.shields.io/nuget/v/Introspector.WebApi.svg)](https://www.nuget.org/packages/Introspector.WebApi/)|
+| Xml |[![NuGet](https://img.shields.io/nuget/v/Introspector.Xml.svg)](https://www.nuget.org/packages/Introspector.Xml/)|
 
 ## Show me what you got
 
