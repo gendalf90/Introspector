@@ -10,12 +10,45 @@ public static class Extensions
     {
         return services.AddSingleton(Factory.Create(package, configure));
     }
-    
+
     public static IApplicationBuilder UseIntrospector(this IApplicationBuilder appBuilder, Action<IntrospectorOptions> configure = null)
     {
         var options = new IntrospectorOptions();
 
         configure?.Invoke(options);
+
+        appBuilder.Map($"{options.BasePath}/all", builder =>
+        {
+            builder.Run(async context =>
+            {
+                var factory = context.RequestServices.GetService<IFactory>();
+
+                if (factory == null)
+                {
+                    context.Response.StatusCode = 204;
+
+                    return;
+                }
+
+                var results = new List<string>();
+                var useCases = factory.CreateUseCases();
+                var useCaseNames = Parser.GetUseCaseNames(useCases);
+
+                results.Add(useCases);
+
+                foreach (var useCaseName in useCaseNames)
+                {
+                    results.Add(factory.CreateSequence(useCaseName));
+                    results.Add(factory.CreateComponents(useCaseName));
+                }
+
+                results.Add(factory.CreateAllComponents());
+
+                context.Response.ContentType = "text/plain; charset=utf-8";
+
+                await context.Response.WriteAsync(string.Join('\n', results));
+            });
+        });
 
         appBuilder.Map($"{options.BasePath}/cases", builder =>
         {

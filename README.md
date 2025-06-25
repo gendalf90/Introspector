@@ -32,6 +32,11 @@ http://localhost:3000/introspector/components
 http://localhost:3000/introspector/components?case=Use%20Case%201
 ```
 
+to see all available schemas in one output
+```
+http://localhost:3000/introspector/all
+```
+
 Then you can use [PlantUml Service](https://editor.plantuml.com/) to draw the output diagrams.
 
 ## Have fun!
