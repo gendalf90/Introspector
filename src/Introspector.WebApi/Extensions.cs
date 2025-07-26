@@ -32,7 +32,14 @@ public static class Extensions
 
                 var results = new List<string>();
                 var useCases = factory.CreateUseCases();
-                var useCaseNames = Parser.GetUseCaseNames(useCases);
+                var useCaseNames = Parser.GetUseCaseNames(useCases).ToList();
+
+                if (useCaseNames.Count == 0)
+                {
+                    context.Response.StatusCode = 204;
+
+                    return;
+                }
 
                 results.Add(useCases);
 
@@ -43,6 +50,76 @@ public static class Extensions
                 }
 
                 results.Add(factory.CreateAllComponents());
+
+                context.Response.ContentType = "text/plain; charset=utf-8";
+
+                await context.Response.WriteAsync(string.Join('\n', results));
+            });
+        });
+
+        appBuilder.Map($"{options.BasePath}/sequences/all", builder =>
+        {
+            builder.Run(async context =>
+            {
+                var factory = context.RequestServices.GetService<IFactory>();
+
+                if (factory == null)
+                {
+                    context.Response.StatusCode = 204;
+
+                    return;
+                }
+
+                var results = new List<string>();
+                var useCases = factory.CreateUseCases();
+                var useCaseNames = Parser.GetUseCaseNames(useCases);
+
+                foreach (var useCaseName in useCaseNames)
+                {
+                    results.Add(factory.CreateSequence(useCaseName));
+                }
+
+                if (results.Count == 0)
+                {
+                    context.Response.StatusCode = 204;
+
+                    return;
+                }
+
+                context.Response.ContentType = "text/plain; charset=utf-8";
+
+                await context.Response.WriteAsync(string.Join('\n', results));
+            });
+        });
+
+        appBuilder.Map($"{options.BasePath}/components/all", builder =>
+        {
+            builder.Run(async context =>
+            {
+                var factory = context.RequestServices.GetService<IFactory>();
+
+                if (factory == null)
+                {
+                    context.Response.StatusCode = 204;
+
+                    return;
+                }
+
+                var results = new List<string>();
+                var useCases = factory.CreateUseCases();
+                var useCaseNames = Parser.GetUseCaseNames(useCases);
+
+                foreach (var useCaseName in useCaseNames)
+                {
+                    results.Add(factory.CreateComponents(useCaseName));
+                }
+
+                if (results.Count == 0)
+                {
+                    context.Response.StatusCode = 204;
+
+                    return;
+                }
 
                 context.Response.ContentType = "text/plain; charset=utf-8";
 
@@ -69,7 +146,7 @@ public static class Extensions
             });
         });
 
-        appBuilder.Map($"{options.BasePath}/sequence", builder =>
+        appBuilder.Map($"{options.BasePath}/sequences", builder =>
         {
             builder.Run(async context =>
             {

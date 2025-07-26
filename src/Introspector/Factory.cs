@@ -241,7 +241,7 @@ internal class FactoryImpl : IFactory
 
             builder.AppendLine("@startuml");
 
-            currentCase.WriteSequenceTitle(builder);
+            currentCase.WriteTitle(builder);
 
             WriteComponents(builder);
             FilterCallsAndCommentsByComponents();
@@ -385,6 +385,8 @@ internal class FactoryImpl : IFactory
                 return string.Empty;
             }
 
+            var firstCase = cases.First();
+
             var builder = new StringBuilder();
 
             builder.AppendLine("@startuml");
@@ -395,6 +397,7 @@ internal class FactoryImpl : IFactory
             }
             else
             {
+                firstCase.WriteTitle(builder);
                 WriteCaseComponents(builder);
             }
 

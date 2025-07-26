@@ -17,10 +17,10 @@ http://localhost:3000/introspector/cases
 
 to see sequence of the use case
 ```
-http://localhost:3000/introspector/sequence?case={UseCaseName}
+http://localhost:3000/introspector/sequences?case={UseCaseName}
 
 Examples:
-http://localhost:3000/introspector/sequence?case=Use%20Case%201
+http://localhost:3000/introspector/sequences?case=Use%20Case%201
 ```
 
 to see components and their connections
@@ -35,6 +35,8 @@ http://localhost:3000/introspector/components?case=Use%20Case%201
 to see all available schemas in one output
 ```
 http://localhost:3000/introspector/all
+http://localhost:3000/introspector/sequences/all
+http://localhost:3000/introspector/components/all
 ```
 
 Then you can use [PlantUml Service](https://editor.plantuml.com/) to draw the output diagrams.

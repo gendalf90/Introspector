@@ -40,15 +40,16 @@ internal class Case : Element
         }
     }
 
-    public void WriteSequenceTitle(StringBuilder builder)
+    public void WriteTitle(StringBuilder builder)
     {
-        if (string.IsNullOrWhiteSpace(text))
-        {
-            return;
-        }
-        
         builder.AppendLine("title");
-        builder.AppendLine(text);
+        builder.AppendLine(name);
+
+        if (!string.IsNullOrWhiteSpace(text))
+        {
+            builder.AppendLine(text);
+        }
+
         builder.AppendLine("end title");
     }
 

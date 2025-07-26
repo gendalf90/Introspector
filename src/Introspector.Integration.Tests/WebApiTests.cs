@@ -44,7 +44,7 @@ public class WebApiTests : IClassFixture<WebFixture>
     [Fact]
     public async Task CheckSequenceOfUnknownCase()
     {
-        var result = await client.GetAsync("/introspector/sequence?case=unknown");
+        var result = await client.GetAsync("/introspector/sequences?case=unknown");
 
         Assert.Equal(HttpStatusCode.NotFound, result.StatusCode);
     }
@@ -52,11 +52,12 @@ public class WebApiTests : IClassFixture<WebFixture>
     [Fact]
     public async Task CheckSequenceOfCaseOne()
     {
-        var result = await client.GetStringAsync("/introspector/sequence?case=use%20case%20one");
+        var result = await client.GetStringAsync("/introspector/sequences?case=use%20case%20one");
 
         Assert.Equal("""
             @startuml
             title
+            use case one
             info about case one
             end title
             participant "service one"
@@ -85,11 +86,12 @@ public class WebApiTests : IClassFixture<WebFixture>
     [Fact]
     public async Task CheckSequenceOfCaseServiceOne()
     {
-        var result = await client.GetStringAsync("/introspector/sequence?case=ServiceOne");
+        var result = await client.GetStringAsync("/introspector/sequences?case=ServiceOne");
 
         Assert.Equal("""
             @startuml
             title
+            ServiceOne
             info about case of service one
             end title
             participant "service one"
@@ -118,10 +120,13 @@ public class WebApiTests : IClassFixture<WebFixture>
     [Fact]
     public async Task CheckSequenceOfCaseTwo()
     {
-        var result = await client.GetStringAsync("/introspector/sequence?case=use%20case%20two");
+        var result = await client.GetStringAsync("/introspector/sequences?case=use%20case%20two");
 
         Assert.Equal("""
             @startuml
+            title
+            use case two
+            end title
             participant "service two"
             participant "ServiceThree"
             / note over "ServiceThree"
@@ -145,10 +150,13 @@ public class WebApiTests : IClassFixture<WebFixture>
     [Fact]
     public async Task CheckSequenceOfCaseThree()
     {
-        var result = await client.GetStringAsync("/introspector/sequence?case=use%20case%20three");
+        var result = await client.GetStringAsync("/introspector/sequences?case=use%20case%20three");
 
         Assert.Equal("""
             @startuml
+            title
+            use case three
+            end title
             participant "ServiceThree"
             / note over "ServiceThree"
             info about ServiceThree
@@ -215,6 +223,10 @@ public class WebApiTests : IClassFixture<WebFixture>
 
         Assert.Equal("""
             @startuml
+            title
+            use case one
+            info about case one
+            end title
             ["ServiceThree"]
             note right of ["ServiceThree"]
             info about ServiceThree
@@ -244,6 +256,10 @@ public class WebApiTests : IClassFixture<WebFixture>
 
         Assert.Equal("""
             @startuml
+            title
+            ServiceOne
+            info about case of service one
+            end title
             ["ServiceThree"]
             note right of ["ServiceThree"]
             info about ServiceThree
@@ -273,6 +289,9 @@ public class WebApiTests : IClassFixture<WebFixture>
 
         Assert.Equal("""
             @startuml
+            title
+            use case two
+            end title
             ["ServiceThree"]
             note right of ["ServiceThree"]
             info about ServiceThree
@@ -299,6 +318,9 @@ public class WebApiTests : IClassFixture<WebFixture>
 
         Assert.Equal("""
             @startuml
+            title
+            use case three
+            end title
             ["ServiceThree"]
             note right of ["ServiceThree"]
             info about ServiceThree
