@@ -1,126 +1,39 @@
-using System.Text;
-
 namespace Introspector;
 
-internal class Case : Element
+public sealed class Case : Element, IEquatable<Case>
 {
-    private readonly string name;
-    private readonly string text;
-
-    private Case(string name, string text)
+    internal Case(string key, string description)
     {
-        this.name = name;
-        this.text = text;
-    }
-
-    public void AddToCall(Call call, float? order)
-    {
-        call.AddCase(name, order);
-    }
-
-    public void AddToComment(Comment comment, float? order)
-    {
-        comment.AddCase(name, order);
-    }
-
-    public bool HasName(string value)
-    {
-        return name == value;
-    }
-
-    public void WriteUseCase(StringBuilder builder)
-    {
-        builder.AppendLine(@$"usecase ""{name}""");
-
-        if (!string.IsNullOrWhiteSpace(text))
+        if (string.IsNullOrWhiteSpace(key))
         {
-            builder.AppendLine(@$"note right of ""{name}""");
-            builder.AppendLine(text);
-            builder.AppendLine("end note");
+            throw new ArgumentException(nameof(key));
         }
+        
+        Key = key;
+        Description = description;
     }
+    
+    public string Key { get; }
 
-    public void WriteTitle(StringBuilder builder)
-    {
-        builder.AppendLine("title");
-        builder.AppendLine(name);
-
-        if (!string.IsNullOrWhiteSpace(text))
-        {
-            builder.AppendLine(text);
-        }
-
-        builder.AppendLine("end title");
-    }
-
+    public string Description { get; }
+    
     public override void Accept(IVisitor visitor)
     {
         visitor.Visit(this);
     }
 
-    public static bool TryCreate(string name, string text, out Case result)
+    public override bool Equals(object obj)
     {
-        result = null;
-
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            return false;
-        }
-
-        result = new Case(name, text);
-
-        return true;
+        return Equals(obj as Case);
     }
 
-    public static void Deduplicate(List<Element> elements)
+    public override int GetHashCode()
     {
-        var deduplicator = new Deduplicator(elements);
-
-        foreach (var element in elements)
-        {
-            element.Accept(deduplicator);
-        }
-
-        deduplicator.Remove();
+        return Key.GetHashCode();
     }
 
-    private class Deduplicator : IVisitor
+    public bool Equals(Case other)
     {
-        private readonly HashSet<string> names = new();
-        private readonly List<Case> toRemove = new();
-        private readonly List<Element> elements;
-
-        public Deduplicator(List<Element> elements)
-        {
-            this.elements = elements;
-        }
-
-        public void Visit(Case value)
-        {
-            if (!names.Add(value.name))
-            {
-                toRemove.Add(value);
-            }
-        }
-
-        public void Remove()
-        {
-            foreach (var @case in toRemove)
-            {
-                elements.Remove(@case);
-            }
-        }
-
-        public void Visit(Component value)
-        {
-        }
-
-        public void Visit(Call value)
-        {
-        }
-
-        public void Visit(Comment value)
-        {
-        }
+        return other != null && string.Equals(Key, other.Key, StringComparison.OrdinalIgnoreCase);
     }
 }

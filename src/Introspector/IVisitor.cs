@@ -1,6 +1,6 @@
 namespace Introspector;
 
-internal interface IVisitor
+public interface IVisitor
 {
     void Visit(Case value);
 
