@@ -2,15 +2,17 @@
 
 namespace Introspector.Files;
 
-public static class FileParser
+public static class FileParserExtensions
 {
-    public static IEnumerable<Element> Parse(
-        string rootDirectory, 
+    public static void LoadFiles(
+        this IBuilder builder,
+        string rootDirectory = ".", 
         string filePattern = "*",
         string stringPrefix = "@>",
         ILogger logger = null,
         CancellationToken token = default)
     {
+        ArgumentNullException.ThrowIfNull(builder);
         ArgumentException.ThrowIfNullOrEmpty(rootDirectory);
         ArgumentException.ThrowIfNullOrEmpty(filePattern);
         ArgumentNullException.ThrowIfNull(stringPrefix);
@@ -24,10 +26,7 @@ public static class FileParser
             .Select(file => ProcessFile(file, logger, stringPrefix))
             .ToList();
 
-        return Builder.Build(builder =>
-        {
-            builders.ForEach(defferred => defferred.Apply(builder));
-        });
+        builders.ForEach(defferred => defferred.Apply(builder));
     }
 
     private static DefferredBuilder ProcessFile(FileInfo file, ILogger logger, string stringPrefix)

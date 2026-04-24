@@ -4,7 +4,7 @@ public interface IBuilder
 {
     void AddCase(string key, string description = null);
 
-    void AddComponent(string key, string type, string description = null);
+    void AddComponent(string key, string description = null);
 
     void AddCall(string caseKey, string fromKey, string toKey, string text = null, float? order = default);
 

@@ -4,16 +4,18 @@ public static class Builder
 {
     public static IEnumerable<Element> Build(Action<IBuilder> configuration)
     {
+        ArgumentNullException.ThrowIfNull(configuration);
+        
         var builder = new BuilderImpl();
 
-        configuration?.Invoke(builder);
+        configuration(builder);
 
         return builder.Build();
     }
 
     private record InputCase(string Key, string Description);
 
-    private record InputComponent(string Key, string Type, string Description);
+    private record InputComponent(string Key, string Description);
 
     private record InputCall(string CaseKey, string FromKey, string ToKey, string Text, float? Order);
 
@@ -42,8 +44,8 @@ public static class Builder
             ArgumentException.ThrowIfNullOrWhiteSpace(toKey);
 
             inputCases.TryAdd(caseKey, new InputCase(caseKey, null));
-            inputComponents.TryAdd(fromKey, new InputComponent(fromKey, null, null));
-            inputComponents.TryAdd(toKey, new InputComponent(toKey, null, null));
+            inputComponents.TryAdd(fromKey, new InputComponent(fromKey, null));
+            inputComponents.TryAdd(toKey, new InputComponent(toKey, null));
             inputCalls.Add(new InputCall(caseKey, fromKey, toKey, text, order));
         }
 
@@ -72,17 +74,17 @@ public static class Builder
 
             if (!string.IsNullOrWhiteSpace(overKey))
             {
-                inputComponents.TryAdd(overKey, new InputComponent(overKey, null, null));
+                inputComponents.TryAdd(overKey, new InputComponent(overKey, null));
             }
 
             inputComments.Add(new InputComment(caseKey, overKey, text, order));
         }
 
-        public void AddComponent(string key, string type, string description)
+        public void AddComponent(string key, string description)
         {
             ArgumentNullException.ThrowIfNull(key);
 
-            inputComponents[key] = new InputComponent(key, type, description);
+            inputComponents[key] = new InputComponent(key, description);
         }
 
         public IEnumerable<Element> Build()
@@ -106,12 +108,7 @@ public static class Builder
 
         private IDictionary<string, Component> BuildComponents()
         {
-            return inputComponents.Values.ToDictionary(x => x.Key, x =>
-            {
-                var componentType = Enum.TryParse<ComponentType>(x.Type, true, out var type) ? type : ComponentType.Default;
-
-                return new Component(x.Key, componentType, x.Description);
-            }, StringComparer.OrdinalIgnoreCase);
+            return inputComponents.Values.ToDictionary(x => x.Key, x => new Component(x.Key, x.Description), StringComparer.OrdinalIgnoreCase);
         }
 
         private IEnumerable<ComposedCaseElement> BuildCallsAndComments(IDictionary<string, Case> cases, IDictionary<string, Component> components)

@@ -11,9 +11,11 @@ internal class Cursor(IBuilder builder) : IDisposable
     
     public void Append(string value)
     {
-        if (TryCreate(value, out element))
+        if (TryCreate(value, out var result))
         {
             Flush();
+
+            element = result;
             
             return;
         }
@@ -23,7 +25,7 @@ internal class Cursor(IBuilder builder) : IDisposable
             return;
         }
 
-        buffer.Append(value);
+        buffer.AppendLine(value);
     }
 
     private bool TryCreate(string value, out IElement result)
@@ -68,7 +70,9 @@ internal class Cursor(IBuilder builder) : IDisposable
             return;
         }
 
-        element.Build(builder, buffer.ToString());
+        var text = buffer.ToString().Trim();
+
+        element.Build(builder, text);
         buffer.Clear();
 
         element = null;
@@ -156,7 +160,7 @@ internal class Cursor(IBuilder builder) : IDisposable
 
             result = new ElementCase
             {
-                key = match.Groups[0].Value
+                key = match.Groups[1].Value
             };
 
             return true;
@@ -165,14 +169,13 @@ internal class Cursor(IBuilder builder) : IDisposable
 
     private class ElementComponent : IElement
     {
-        private static readonly Regex Pattern = new(@"component\((?<type>\S+)\):\s*(?<name>\S+)\s*$", RegexOptions.Compiled);
+        private static readonly Regex Pattern = new(@"component:\s+(\w+)\s*$", RegexOptions.Compiled);
 
         private string name;
-        private string type;
 
         public void Build(IBuilder builder, string text)
         {
-            builder.AddComponent(name, type, text);
+            builder.AddComponent(name, text);
         }
 
         public static bool TryCreate(string value, out ElementComponent result)
@@ -188,8 +191,7 @@ internal class Cursor(IBuilder builder) : IDisposable
 
             result = new ElementComponent
             {
-                name = match.Groups["name"].Value,
-                type = match.Groups["type"].Value
+                name = match.Groups[1].Value
             };
 
             return true;

@@ -2,15 +2,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Launch Sample",
-            "type": "coreclr",
+            "name": "Mcp Server Debug",
+            "type": "dotnet",
             "request": "launch",
-            "preLaunchTask": "build",
-            "program": "${workspaceFolder}/src/Introspector.Sample/bin/Debug/net8.0/Introspector.Sample.dll",
-            "args": [],
-            "cwd": "${workspaceFolder}",
-            "stopAtEntry": false,
-            "console": "integratedTerminal"
+            "projectPath": "${workspaceFolder}/src/Introspector.McpServer/Introspector.McpServer.csproj"
         }
     ]
 }

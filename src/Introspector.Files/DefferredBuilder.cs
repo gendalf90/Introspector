@@ -21,9 +21,9 @@ internal class DefferredBuilder(ILogger logger) : IBuilder
         configurators.Add(builder => builder.AddComment(caseKey, text, order, overKey));
     }
 
-    public void AddComponent(string key, string type, string description)
+    public void AddComponent(string key, string description)
     {
-        configurators.Add(builder => builder.AddComponent(key, type, description));
+        configurators.Add(builder => builder.AddComponent(key, description));
     }
 
     public void AddRef(string caseFromKey, string caseToKey, float? order)

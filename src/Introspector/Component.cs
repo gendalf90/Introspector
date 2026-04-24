@@ -1,14 +1,8 @@
 namespace Introspector;
 
-public enum ComponentType
-{
-    Default = 0,
-    Database = 1
-}
-
 public sealed class Component : Element, IEquatable<Component>
 {
-    internal Component(string key, ComponentType type, string description)
+    internal Component(string key, string description)
     {
         if (string.IsNullOrWhiteSpace(key))
         {
@@ -16,13 +10,10 @@ public sealed class Component : Element, IEquatable<Component>
         }
         
         Key = key;
-        Type = type;
         Description = description;
     }
     
     public string Key { get; }
-
-    public ComponentType Type { get; }
 
     public string Description { get; }
 
