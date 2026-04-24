@@ -11,6 +11,6 @@ public static class McpExtensions
 
         var elements = Builder.Build(configuration);
 
-        return builder.WithTools(new ElementsTool([.. elements]));
+        return builder.WithTools(new ElementTools([.. elements]));
     }
 }

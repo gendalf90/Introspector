@@ -5,10 +5,15 @@ using ModelContextProtocol.Server;
 
 namespace Introspector.Mcp;
 
-internal class ElementsTool(List<Element> elements)
+internal class ElementTools(List<Element> elements)
 {
-    [McpServerTool] 
-    [Description("Returns all available use cases list.")]
+    private readonly JsonSerializerOptions options = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+    
+    [McpServerTool]
+    [Description("Returns all available use cases list with description.")]
     public string GetAllCases()
     {
         var cases = new List<Case>();
@@ -16,33 +21,34 @@ internal class ElementsTool(List<Element> elements)
 
         elements.ForEach(value => value.Accept(visitor));
 
-        return JsonSerializer.Serialize(cases);
+        return JsonSerializer.Serialize(cases.Select(value => new
+        {
+            value.Key,
+            value.Description
+        }), options);
     }
 
-    [McpServerTool] 
-    [Description("Returns a specific use case by key.")]
-    public string GetCase(string key)
+    [McpServerTool]
+    [Description("Returns all available components (participants) list with description.")]
+    public string GetAllComponents()
     {
-        Case result = null;
-
-        var visitor = Visitor.Create(onCase: value =>
-        {
-            if (string.Equals(value.Key, key, StringComparison.OrdinalIgnoreCase))
-            {
-                result = value;
-            }
-        });
+        var components = new List<Component>();
+        var visitor = Visitor.Create(onComponent: components.Add);
 
         elements.ForEach(value => value.Accept(visitor));
 
-        return JsonSerializer.Serialize(result);
+        return JsonSerializer.Serialize(components.Select(value => new
+        {
+            value.Key,
+            value.Description
+        }), options);
     }
 
     [McpServerTool] 
     [Description("Returns a sequence diagram of a specific use case by key.")]
     public string GetCaseSequence(string key)
     {
-        var builder = new StringBuilder("sequenceDiagram");
+        var builder = new StringBuilder();
         var results = new List<(Component component, Comparer order, Call call, Comment comment)>();
         var visitor = Visitor.Create(
             onCall: value =>
@@ -68,6 +74,8 @@ internal class ElementsTool(List<Element> elements)
             return null;
         }
 
+        builder.AppendLine("sequenceDiagram");
+
         var components = results
             .Where(e => e.component != null)
             .OrderBy(e => e.order)
@@ -77,7 +85,7 @@ internal class ElementsTool(List<Element> elements)
 
         foreach (var component in components)
         {
-            builder.AppendLine($"\tparticipant {component.Key} as {component.Key}<br>{ReplaceNewLines(component.Description)}");
+            builder.AppendLine($"\tparticipant {component.Key}");
         }
 
         var callsAndComments = results
@@ -122,11 +130,11 @@ internal class ElementsTool(List<Element> elements)
             }
         }
 
-        return builder.ToString();
+        return builder.ToString().Trim();
     }
 
     private string ReplaceNewLines(string value)
     {
-        return value.Replace(Environment.NewLine, "<br>");
+        return value?.Trim().Replace(Environment.NewLine, "<br>");
     }
 }
