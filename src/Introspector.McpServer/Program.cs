@@ -35,8 +35,6 @@ builder.Services
         );
     });
 
-builder.WebHost.UseUrls($"https://[::]:{builder.Configuration.GetValue<int>("Port")}");
-
 var app = builder.Build();
 
 app.MapMcp(builder.Configuration.GetValue<string>("BasePath"));
